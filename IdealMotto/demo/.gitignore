@@ -17,7 +17,7 @@ target/
 .idea
 *.iws
 *.iml
-*.ipr
+*.ipr/out
 
 ### NetBeans ###
 /nbproject/private/
@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Logs ###
+*.log
