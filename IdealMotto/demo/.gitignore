@@ -37,6 +37,18 @@ out/
 .idea/dataSources/
 .idea/dataSources.local.xml
 
+### Environment & secrets ###
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+secrets.yml
+application-secrets.yml
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
