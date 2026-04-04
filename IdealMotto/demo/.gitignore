@@ -85,3 +85,23 @@ logs/
 *.dump
 *.hprof
 *.heapdump
+
+### Build tools ###
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.tgz
+dependency-reduced-pow.xml
+
+### Testing ###
+/coverage/
+/.coverage/
+/test-output/
+/jacoco.exec
+/surefire-reports/
+/target/surefire-reports/
+*.test-results.xml
+
