@@ -119,7 +119,7 @@ docker-compose.override.yml
 .dockerignore
 
 ### Nide.js (for frontend) ###
-node_modules/
+node_modules/ss
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
