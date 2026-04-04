@@ -4,6 +4,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Java compilled files ###
+*.class
+
 ### Spring Boot specific ###
 application-local.properties
 application-dev.properties
