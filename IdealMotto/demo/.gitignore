@@ -61,6 +61,8 @@ build/
 
 ### VS Code ###
 .vscode/
+*.code-workspace
+.history/
 
 ### Mac OS ###
 .DS_Store
