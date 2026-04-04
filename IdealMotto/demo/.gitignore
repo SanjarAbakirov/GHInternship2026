@@ -67,5 +67,12 @@ build/
 ### Mac OS ###
 .DS_Store
 
-### Logs ###
+### Logs & temp files ###
+logs/
 *.log
+*.tmp
+*.temp
+*.cache
+*.dump
+*.hprof
+*.heapdump
