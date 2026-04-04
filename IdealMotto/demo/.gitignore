@@ -105,3 +105,14 @@ dependency-reduced-pow.xml
 /target/surefire-reports/
 *.test-results.xml
 
+### Database ###
+*.db
+*.splite
+*.h2.db
+*.mv.db
+*.trace.db
+/hsqldb/
+/data/
+
+### Docker ###
+docker-compose.override.yml
