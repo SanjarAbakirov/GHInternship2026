@@ -34,3 +34,5 @@ public class UserController {
         return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
 }
+
+// ./mvnw spring-boot:run
