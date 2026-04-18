@@ -19,4 +19,9 @@ public class DemoApplication {
     }
 }
 // we created workable end-point
-// business logic
+// business logic// diff interface and class
+// diff interface and class
+//./mvnw spring-boot:run
+//./mvnw clean install
+// copy all with command - ask AI about (claud.ai) - ask curiously
+//interface - working with db
