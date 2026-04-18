@@ -3,6 +3,7 @@ package com.example.demo.entity;
 //import javax.persistence.*;
 
 import jakarta.persistence.*;
+// пакет стандартных аннотаций для работы с базами данных в Jakarta EE
 
 
 @Entity
