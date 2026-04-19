@@ -15,9 +15,10 @@ public class DemoApplication {
 
     @GetMapping("/hello")
     public String sayHello() {
-        return "Hello World!";
+        return "Hello World! Sam, Good luck!";
     }
 }
+
 
 
 
@@ -26,6 +27,6 @@ public class DemoApplication {
 // business logic// diff interface and class
 // diff interface and class
 //./mvnw spring-boot:run
-//./mvnw clean install
+//./mvnw clean //install
 // copy all with command - ask AI about (claud.ai) - ask curiously
 //interface - working with db
