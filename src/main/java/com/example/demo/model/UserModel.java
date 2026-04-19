@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "users")
 
-public class User {
+public class UserModel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,9 +21,9 @@ public class User {
     private LocalDateTime createdAt;
 
     // constructor
-    public User() {}
+    public UserModel() {}
 
-    public User(String username, String email) {
+    public UserModel(String username, String email) {
         this.username = username;
         this.email = email;
         this.createdAt = LocalDateTime.now();

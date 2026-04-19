@@ -1,5 +1,5 @@
 //// htps requests
-package com.example.demo.controller;
+//package com.example.demo.controller;
 //
 //import com.example.demo.dto.UserDTO;
 //import com.example.demo.service.UserService;
@@ -67,7 +67,7 @@ package com.example.demo.controller;
 
 
 // second
-//package com.example.demo.controller;
+package com.example.demo.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -79,5 +79,4 @@ public class UserController {
     public String hello(){
         return "Hello, Spring Boot! it works!";
     }
-
 }

@@ -19,10 +19,6 @@ public class DemoApplication {
     }
 }
 
-
-
-
-
 // we created workable end-point
 // business logic// diff interface and class
 // diff interface and class
