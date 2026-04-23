@@ -1,29 +1,26 @@
 package com.example.demo.entity;
-
-//import javax.persistence.*;
-
 import jakarta.persistence.*;
-// пакет стандартных аннотаций для работы с базами данных в Jakarta EE
-
 
 @Entity
-@Table(name = "users")
-public class User {
+@Table(name = "users_table")
+public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
     private String email;
 
-    // Конструкторы
-    public User() {}
-
-    public User(String name, String email) {
+//    Constructors
+    public UserEntity() {}
+    public UserEntity(String name, String email) {
         this.name = name;
         this.email = email;
     }
 
-    // Геттеры и сеттеры
+    public UserEntity(String name) {
+    }
+
+    //    Getter and Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getName() { return name; }
