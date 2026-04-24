@@ -1,30 +1,65 @@
 package com.example.demo.entity;
 import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
 @Entity
-@Table(name = "users_table")
 public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
-    private String email;
 
-//    Constructors
-    public UserEntity() {}
-    public UserEntity(String name, String email) {
-        this.name = name;
-        this.email = email;
+    //construction getter setter
+    public UserEntity() {
     }
 
     public UserEntity(String name) {
+        this.name = name;
     }
 
-    //    Getter and Setter
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    //getters and setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }
+
+
+//@Table(name = "users_table")
+//public class UserEntity {
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    private Long id;
+//    private String name;
+//    private String email;
+
+//  -======  Constructors
+//    public UserEntity() {}
+//    public UserEntity(String name, String email) {
+//        this.name = name;
+//        this.email = email;
+//    }
+//
+//    public UserEntity(String name) {
+//    }
+
+    // ======   Getter and Setter
+
+//    public String getName() { return name; }
+//    public void setName(String name) { this.name = name; }
+//    public String getEmail() { return email; }
+//    public void setEmail(String email) { this.email = email; }
