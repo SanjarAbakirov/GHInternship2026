@@ -13,64 +13,54 @@ public class UserEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
 
-    @Column(name = "email", unique = true)
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
 
-    @Column(name = "telephone")
+    @Column(name = "phone")
     private String telephone;
 
-    //construction of getters and setters
+    public UserEntity() { // empty constructor for JPA
+    }
+
+
+    //construction with parameters
     public UserEntity(String name, String email, String telephone) {
         this.name = name;
         this.email = email;
         this.telephone = telephone;
-        // id generates automatically
+        // id generates automatically, no need to write
     }
 
-    public UserEntity() {
-
-    }
-
-
-    //getters and setters
+    //getters and setters are needed to read and add data in database
+    //for id
     public Long getId() {
         return id;
     }
-
     public void setId(Long id) {
-        this.id = id;
+        this.id = id; // establish new id
     }
-
+    //for name
     public String getName() {
         return name;
     }
-
     public void setName(String name) {
         this.name = name;
     }
+    //for email
+    public String getEmail() {
+        return email;
+    }
+    public void setEmail(String email) {
+        this.email = email;
+    }
+    //for phone
+    public String getTelephone() {
+        return telephone;
+    }
+    public void setTelephone(String telephone) {
+        this.telephone = telephone;
+    }
 }
-
-
-//@Table(name = "users_table")
-//public class UserEntity {
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    private Long id;
-//    private String name;
-//    private String email;
-
-//  ======  Constructors ======
-//    public UserEntity(String name, String email) {
-//        this.name = name;
-//        this.email = email;
-//    }
-
-
-    // ======   Getter and Setter
-//    public String getName() { return name; }
-//    public void setName(String name) { this.name = name; }
-//    public String getEmail() { return email; }
-//    public void setEmail(String email) { this.email = email; }
