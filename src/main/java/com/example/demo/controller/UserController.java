@@ -16,14 +16,14 @@ public class UserController {
     //Get all users
     //Get http://localhost:8080/api/users
 
-    @GetMapping
+    @GetMapping("/list")
     public List<UserEntity> getAllUsers(){
         return userRepository.findAll();
     }
 
     //adding new user
     //POST http://localhost:8080/api/users?name=John&email=john@mail.com&phone=0444990099
-    @PostMapping
+    @PostMapping("/add")
     public UserEntity createUser(
             @RequestParam String name,
             @RequestParam String email,

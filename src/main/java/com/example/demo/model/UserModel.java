@@ -28,7 +28,7 @@ public class UserModel {
         this.createdAt = LocalDateTime.now();
     }
 
-//    Getters and setters (possible to generate: Cmd+N -> Getter and Settter)
+//    Getters and setters (possible to generate: Cmd+N -> Getter and Setter)
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
