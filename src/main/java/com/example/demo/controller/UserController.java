@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/test")
+@RequestMapping("/api")
 public class UserController {
 
     @Autowired
@@ -16,7 +16,7 @@ public class UserController {
     //Get all users
     //Get http://localhost:8080/api/users
 
-    @PostMapping
+    @GetMapping
     public List<UserEntity> getAllUsers(){
         return userRepository.findAll();
     }

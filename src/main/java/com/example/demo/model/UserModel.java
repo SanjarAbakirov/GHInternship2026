@@ -1,5 +1,4 @@
 package com.example.demo.model;
-
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -8,7 +7,7 @@ import java.time.LocalDateTime;
 
 public class UserModel {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue()
     private Long id;
 
     @Column(nullable = false, unique = true)
