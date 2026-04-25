@@ -14,7 +14,7 @@ public class UserController {
     private UserRepository userRepository;
 
     //Get all users
-    //Get http://localhost:8080/api/users
+    //Get http://localhost:8080/api
 
     @GetMapping("/list")
     public List<UserEntity> getAllUsers(){
