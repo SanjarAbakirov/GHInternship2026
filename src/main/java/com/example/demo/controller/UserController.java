@@ -32,7 +32,13 @@ public class UserController {
         return userRepository.save(user);
     }
 
-
+    //Delete user
+    // Delete http://localhost:8080/api/users/1
+    @DeleteMapping("/{id}")
+    public String deleteUser(@PathVariable Long id) {
+        userRepository.deleteById(id);
+        return "User deleted with id: " + id;
+    }
 
 
 
