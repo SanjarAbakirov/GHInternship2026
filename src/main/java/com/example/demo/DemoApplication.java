@@ -12,13 +12,13 @@ public class DemoApplication {
         SpringApplication.run(DemoApplication.class, args);
     }
 
-    @GetMapping("/hello")
+    @GetMapping
     public String sayHello() {
         return "Hello World! This is new project!";
     }
 
-    @GetMapping("/sanjar")
-    public String sanjar() {
+    @GetMapping
+    public String sanHello() {
         return "Hello, this is Sanjar's DB";
     }
 }
