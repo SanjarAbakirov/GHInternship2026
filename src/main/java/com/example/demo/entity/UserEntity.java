@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 //import jakarta.persistence.GeneratedValue;
 //import jakarta.persistence.GenerationType;
 //import jakarta.persistence.Id;
-import lombok.Getter;   
+import lombok.Getter;
 import lombok.Setter;
 
 @Setter
@@ -30,18 +30,17 @@ public class UserEntity {
 
     //for phone
     @Column(name = "phone")
-    private String telephone;
+    private int telephone;
 
     public UserEntity() { // empty constructor for JPA
     }
 
 
     //construction with parameters
-    public UserEntity(String name, String email, String telephone) {
+    public UserEntity(String name, String email, Integer telephone) {
         this.name = name;
         this.email = email;
         this.telephone = telephone;
         // id generates automatically, no need to write
     }
-
 }

@@ -21,7 +21,7 @@ public class UserController {
     public UserEntity createUser(
             @RequestParam String name,
             @RequestParam String email,
-            @RequestParam(required = false) String telephone) {
+            @RequestParam(required = false) Integer telephone) {
         UserEntity user = new UserEntity(name, email, telephone);
         return userRepository.save(user);
     }
