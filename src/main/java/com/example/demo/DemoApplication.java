@@ -16,9 +16,9 @@ public class DemoApplication {
     public String sayHello() {
         return "Hello World! This is new project!";
     }
-
-    @GetMapping
-    public String sanHello() {
-        return "Hello, this is Sanjar's DB";
-    }
+//
+//    @GetMapping
+//    public String sanHello() {
+//        return "Hello, this is Sanjar's DB";
+//    }
 }

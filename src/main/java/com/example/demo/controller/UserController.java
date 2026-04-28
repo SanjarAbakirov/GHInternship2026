@@ -10,33 +10,35 @@ import java.util.List;
 @RequestMapping("/api")
 public class UserController {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    //Get all users
-    //Get http://localhost:8080/api
-
-    @GetMapping("/list")
-    public List<UserEntity> getAllUsers(){
+    @GetMapping("/list")      // → GET /api/list
+    public List<UserEntity> getAllUsers() {
         return userRepository.findAll();
     }
 
     //adding new user
-    //POST http://localhost:8080/api/users?name=John&email=john@mail.com&phone=0444990099
-    @PostMapping("/add")
+    //POST http://localhost:8080/api
+    @PostMapping("/add")      // → POST /api/add
     public UserEntity createUser(
             @RequestParam String name,
             @RequestParam String email,
-            @RequestParam(required = false) String telephone){
+            @RequestParam(required = false) String telephone) {
         UserEntity user = new UserEntity(name, email, telephone);
         return userRepository.save(user);
     }
 
+
     //Delete user
     // Delete http://localhost:8080/api/users/1
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}")   // → DELETE /api/{id}
     public String deleteUser(@PathVariable Long id) {
-        userRepository.deleteById(id);
-        return "User deleted with id: " + id;
+        if (userRepository.existsById(id)){
+            userRepository.deleteById(id);
+            return "User deleted with id: " + id;
+        } else {
+            return "User with id " + id + " not found!";
+        }
     }
+
+    @Autowired
+    private UserRepository userRepository;
 }
