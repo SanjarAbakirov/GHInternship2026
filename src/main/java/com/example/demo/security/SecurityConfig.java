@@ -2,21 +2,29 @@ package com.example.demo.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;s
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+/**
+ * Конфигурационный класс для безопасности приложения
+ * @Configuration - говорит Spring, что этот класс содержит настройки
+ */
 @Configuration
 public class SecurityConfig {
 
     /**
-     * Создает бин PasswordEncoder с использованием BCryptPasswordEncoder
-     * Это сильный алгоритм хеширования паролей
-     * Бин будет доступен для внедрения во всем приложении
+     * Создаем бин (объект) PasswordEncoder, который будет использовать BCrypt
+     * @Bean - говорит Spring: "создай этот объект и храни его в контексте"
+     *
+     * Что такое бин? Это объект, которым управляет Spring.
+     * Мы сможем использовать этот PasswordEncoder в любом месте приложения
+     * через аннотацию @Autowired
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // BCrypt использует соль (salt) и адаптивную сложность
-        // Параметр 10 (default) - сила хеширования (2^10 итераций)
+        // BCryptPasswordEncoder - это реализация PasswordEncoder
+        // Сила = 10 (чем выше, тем дольше шифруется, но безопаснее)
+        // Можно написать new BCryptPasswordEncoder(10) - но 10 это значение по умолчанию
         return new BCryptPasswordEncoder();
     }
 }
