@@ -1,4 +1,4 @@
-package com.example.demo.security;
+package com.example.demo.securities;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
