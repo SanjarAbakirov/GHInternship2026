@@ -7,18 +7,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * REST контроллер для тестирования шифрования паролей
- * @RestController - этот класс обрабатывает HTTP запросы
- */
+
+// REST контроллер для тестирования шифрования паролей
+// @RestController - этот класс обрабатывает HTTP запросы
+
 @RestController
 @RequestMapping("/api/auth")  // Все методы будут доступны по адресу /api/auth/...
 @RequiredArgsConstructor
 public class AuthController {
-    private UserService userService;
-    public void UserController(UserService userService) {
-        this.userService = userService;
-    }
+    private final UserService userService;
+//     pass userService to constructor by using final
 
     /**
      * Тестируем шифрование пароля
