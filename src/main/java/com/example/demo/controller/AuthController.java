@@ -15,8 +15,10 @@ import java.util.Map;
 @RequestMapping("/api/auth")  // Все методы будут доступны по адресу /api/auth/...
 @RequiredArgsConstructor
 public class AuthController {
-
-    private final UserService userService;
+    private UserService userService;
+    public void UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     /**
      * Тестируем шифрование пароля
