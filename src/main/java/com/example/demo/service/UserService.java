@@ -23,7 +23,7 @@ public class UserService {
     }
 }
 
-// zapas
+// --zapas--
 //
 //public class UserService {
 //    // Spring автоматически вставит сюда наш PasswordEncoder (из SecurityConfig)
