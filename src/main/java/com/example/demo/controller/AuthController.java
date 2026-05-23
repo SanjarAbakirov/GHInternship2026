@@ -15,7 +15,6 @@ import java.util.Map;
 public class AuthController {
     private final UserService userService;
 // pass userService to constructor by using final
-
     /**
      * Тестируем шифрование пароля
      * Пример запроса: POST /api/auth/encode
@@ -58,7 +57,4 @@ public class AuthController {
 
         return response;
     }
-
-
-
 }
