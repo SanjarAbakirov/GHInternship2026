@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-
 // REST контроллер для тестирования шифрования паролей
 // @RestController - этот класс обрабатывает HTTP запросы
 @RestController
@@ -25,16 +24,13 @@ public class AuthController {
     @PostMapping("/encode")
     public Map<String, String> encodePassword(@RequestBody Map<String, String> request) {
         String rawPassword = request.get("password");
-
         // Шифруем пароль
         String encodedPassword = userService.encodePassword(rawPassword);
-
         // Отправляем ответ
         Map<String, String> response = new HashMap<>();
         response.put("originalPassword", rawPassword);
         response.put("encodedPassword", encodedPassword);
         response.put("message", "Пароль зашифрован! Сохрани encodedPassword в базу данных");
-
         return response;
     }
 
