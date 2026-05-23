@@ -10,13 +10,12 @@ import java.util.Map;
 
 // REST контроллер для тестирования шифрования паролей
 // @RestController - этот класс обрабатывает HTTP запросы
-
 @RestController
 @RequestMapping("/api/auth")  // Все методы будут доступны по адресу /api/auth/...
 @RequiredArgsConstructor
 public class AuthController {
     private final UserService userService;
-//     pass userService to constructor by using final
+// pass userService to constructor by using final
 
     /**
      * Тестируем шифрование пароля
@@ -63,4 +62,7 @@ public class AuthController {
 
         return response;
     }
+
+
+
 }

@@ -12,10 +12,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor  // Lombok создаст конструктор для final полей
 public class UserService {
-
     // Spring автоматически вставит сюда наш PasswordEncoder (из SecurityConfig)
     private final PasswordEncoder passwordEncoder;
-
     /**
      * Зашифровать пароль (для регистрации)
      * @param rawPassword - пароль в открытом виде (например, "mypass123")
@@ -26,14 +24,11 @@ public class UserService {
         if (rawPassword == null || rawPassword.isEmpty()) {
             throw new IllegalArgumentException("Пароль не может быть пустым");
         }
-
         // Шифруем пароль
         String encodedPassword = passwordEncoder.encode(rawPassword);
-
         // Выводим в консоль для наглядности (потом удалишь)
         System.out.println("Оригинальный пароль: " + rawPassword);
         System.out.println("Зашифрованный пароль: " + encodedPassword);
-
         return encodedPassword;
     }
 
