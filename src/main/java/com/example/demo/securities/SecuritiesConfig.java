@@ -8,7 +8,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import static org.junit.jupiter.api.Assertions.*;
 
 // //* Тест для проверки работы PasswordEncoder
-// //* @SpringBootTest - запускает полный Spring контекст
 
 @SpringBootTest
 class PasswordEncoderTest {
