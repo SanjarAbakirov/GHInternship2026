@@ -14,6 +14,6 @@ public class DemoApplication {
 
     @GetMapping
     public String sayHello() {
-        return "Hello World! This is new project!";
+        return "Hello World! Security is configured!";
     }
 }
