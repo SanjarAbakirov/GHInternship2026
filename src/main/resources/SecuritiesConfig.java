@@ -12,4 +12,3 @@ public class SecuritiesConfig {
         return new BCryptPasswordEncoder();
     }
 }
-
