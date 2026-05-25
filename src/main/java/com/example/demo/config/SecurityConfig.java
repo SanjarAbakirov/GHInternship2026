@@ -16,13 +16,22 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // Отключаем CSRF для API эндпоинтов (для тестирования)
+                .csrf(csrf -> csrf.disable())
+
+                // Настройка доступа к эндпоинтам
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()  // Временно разрешаем ВСЕ запросы
-                )
-                .csrf(csrf -> csrf.disable());  // Отключаем CSRF для простоты
+                        // Разрешаем доступ к эндпоинтам регистрации и логина всем
+                 A       .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/").permitAll()
+                        // Все остальные запросы требуют аутентификации
+                        .anyRequest().authenticated()
+                );
+
         return http.build();
     }
 }
