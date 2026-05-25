@@ -25,7 +25,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
+        <!-- JPA для работы с базой данных -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -80,11 +80,8 @@
 <!--            <artifactId>spring-boot-starter</artifactId>-->
 <!--        </dependency>-->
 
-        <!-- JPA для работы с базой данных -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
+
+
 
         <!-- H2 база данных (для тестирования) -->
         <dependency>
