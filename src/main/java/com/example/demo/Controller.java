@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 @RestController
 public class Controller {
+
     @Autowired
     private UserRepository userRepository;
 

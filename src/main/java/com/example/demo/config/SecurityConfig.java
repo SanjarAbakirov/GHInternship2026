@@ -20,20 +20,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Отключаем CSRF для API эндпоинтов (для тестирования)
                 .csrf(csrf -> csrf.disable())
+
+                // Разрешаем фреймы для H2 консоли
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin())
-                        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-                        .contentSecurityPolicy(csp -> csp.policyDirectives("script-src 'self' 'unsafe-inline' 'unsafe-eval'"))
                 )
 
-                // Настройка доступа к эндпоинтам
                 .authorizeHttpRequests(auth -> auth
-                        // Разрешаем доступ к эндпоинтам регистрации и логина всем
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/").permitAll()
-                        // Все остальные запросы требуют аутентификации
                         .requestMatchers("/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 );
