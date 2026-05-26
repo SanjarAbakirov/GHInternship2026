@@ -29,6 +29,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/").permitAll()
                         // Все остальные запросы требуют аутентификации
+                        .requestMatchers("/h2-console/**").permitAll()
                         .anyRequest().authenticated()
                 );
 
