@@ -22,6 +22,11 @@ public class SecurityConfig {
         http
                 // Отключаем CSRF для API эндпоинтов (для тестирования)
                 .csrf(csrf -> csrf.disable())
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.sameOrigin())
+                        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("script-src 'self' 'unsafe-inline' 'unsafe-eval'"))
+                )
 
                 // Настройка доступа к эндпоинтам
                 .authorizeHttpRequests(auth -> auth
