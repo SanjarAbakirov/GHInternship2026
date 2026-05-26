@@ -11,14 +11,14 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
     @Column(nullable = false)
-    private String password; // будет хранить хешированный пароль
+    private String password;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -72,5 +72,10 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
     }
 }

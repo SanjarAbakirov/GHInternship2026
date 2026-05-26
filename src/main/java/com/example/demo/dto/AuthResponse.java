@@ -1,82 +1,41 @@
-package com.example.demo.controller;
+package com.example.demo.dto;
 
-import com.example.demo.dto.AuthResponse;
-import com.example.demo.dto.LoginRequest;
-import com.example.demo.dto.RegisterRequest;
-import com.example.demo.model.User;
-import com.example.demo.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+public class AuthResponse {
+    private boolean success;
+    private String message;
+    private String username;
 
-@RestController
-@RequestMapping("/api/auth")
-public class AuthController {
+    // Конструкторы
+    public AuthResponse() {}
 
-    @Autowired
-    private UserService userService;
-
-    // Эндпоинт для регистрации
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest registerRequest) {
-        try {
-            // Регистрируем пользователя
-            User newUser = userService.registerUser(
-                    registerRequest.getUsername(),
-                    registerRequest.getEmail(),
-                    registerRequest.getPassword()
-            );
-
-            // Успешный ответ с кодом 201 Created
-            AuthResponse response = new AuthResponse(
-                    true,
-                    "User registered successfully!",
-                    newUser.getUsername()
-            );
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
-        } catch (RuntimeException e) {
-            // Ошибка при регистрации
-            AuthResponse response = new AuthResponse(
-                    false,
-                    e.getMessage(),
-                    null
-            );
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
+    public AuthResponse(boolean success, String message, String username) {
+        this.success = success;
+        this.message = message;
+        this.username = username;
     }
 
-    // Эндпоинт для логина
-    @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
-        try {
-            // Аутентифицируем пользователя
-            User authenticatedUser = userService.authenticateUser(
-                    loginRequest.getUsername(),
-                    loginRequest.getPassword()
-            );
+    // Геттеры и сеттеры
+    public boolean isSuccess() {
+        return success;
+    }
 
-            // Успешный ответ
-            AuthResponse response = new AuthResponse(
-                    true,
-                    "Login successful!",
-                    authenticatedUser.getUsername()
-            );
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
 
-            return ResponseEntity.ok(response);
+    public String getMessage() {
+        return message;
+    }
 
-        } catch (RuntimeException e) {
-            // Ошибка аутентификации
-            AuthResponse response = new AuthResponse(
-                    false,
-                    e.getMessage(),
-                    null
-            );
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

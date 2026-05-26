@@ -26,7 +26,7 @@ public class SecurityConfig {
                 // Настройка доступа к эндпоинтам
                 .authorizeHttpRequests(auth -> auth
                         // Разрешаем доступ к эндпоинтам регистрации и логина всем
-                 A       .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/").permitAll()
                         // Все остальные запросы требуют аутентификации
                         .anyRequest().authenticated()
