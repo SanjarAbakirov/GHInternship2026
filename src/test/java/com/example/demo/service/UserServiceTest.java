@@ -14,11 +14,10 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class UserServiceTest {
+class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -37,6 +36,8 @@ public class UserServiceTest {
         testUser.setId(1L);
     }
 
+    // ========== registerUser Tests ==========
+
     @Test
     void registerUser_Success() {
         // Given
@@ -52,10 +53,17 @@ public class UserServiceTest {
         assertNotNull(result);
         assertEquals("testuser", result.getUsername());
         assertEquals("test@example.com", result.getEmail());
+        assertEquals("encodedPassword", result.getPassword());
+
+        // Verify interactions
+        verify(userRepository).existsByUsername("testuser");
+        verify(userRepository).existsByEmail("test@example.com");
+        verify(passwordEncoder).encode("password123");
+        verify(userRepository).save(any(User.class));
     }
 
     @Test
-    void registerUser_UsernameExists_ThrowsException() {
+    void registerUser_UsernameAlreadyExists_ThrowsException() {
         // Given
         when(userRepository.existsByUsername("testuser")).thenReturn(true);
 
@@ -65,10 +73,13 @@ public class UserServiceTest {
         });
 
         assertEquals("Username already exists!", exception.getMessage());
+
+        // Verify that save was never called
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void registerUser_EmailExists_ThrowsException() {
+    void registerUser_EmailAlreadyExists_ThrowsException() {
         // Given
         when(userRepository.existsByUsername("testuser")).thenReturn(false);
         when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
@@ -79,7 +90,12 @@ public class UserServiceTest {
         });
 
         assertEquals("Email already exists!", exception.getMessage());
+
+        // Verify that save was never called
+        verify(userRepository, never()).save(any(User.class));
     }
+
+    // ========== authenticateUser Tests ==========
 
     @Test
     void authenticateUser_Success() {
@@ -93,6 +109,11 @@ public class UserServiceTest {
         // Then
         assertNotNull(result);
         assertEquals("testuser", result.getUsername());
+        assertEquals("test@example.com", result.getEmail());
+
+        // Verify interactions
+        verify(userRepository).findByUsername("testuser");
+        verify(passwordEncoder).matches("password123", "encodedPassword");
     }
 
     @Test
@@ -106,6 +127,9 @@ public class UserServiceTest {
         });
 
         assertEquals("User not found!", exception.getMessage());
+
+        // Verify that password encoder was never called
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 
     @Test
@@ -120,7 +144,9 @@ public class UserServiceTest {
         });
 
         assertEquals("Invalid password!", exception.getMessage());
+
+        // Verify that find by username was called but password didn't match
+        verify(userRepository).findByUsername("testuser");
+        verify(passwordEncoder).matches("wrongpassword", "encodedPassword");
     }
 }
-
-
