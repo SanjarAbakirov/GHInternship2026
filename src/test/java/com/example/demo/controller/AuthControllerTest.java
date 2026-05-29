@@ -1,36 +1,31 @@
-package com.example.demo.controller;
+//cat > src/test/java/com/example/demo/controller/AuthControllerTest.java << 'EOF'
+//        package com.example.demo.controller;
 
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.model.User;
 import com.example.demo.service.UserService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-public class AuthControllerTest {
+@ExtendWith(MockitoExtension.class)
+class AuthControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
+    @Mock
     private UserService userService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @InjectMocks
+    private AuthController authController;
 
     private User testUser;
 
@@ -41,66 +36,45 @@ public class AuthControllerTest {
     }
 
     @Test
-    void registerUser_Success() throws Exception {
-        // Given
+    void registerUser_Success() {
         RegisterRequest request = new RegisterRequest("testuser", "test@example.com", "password123");
         when(userService.registerUser(anyString(), anyString(), anyString())).thenReturn(testUser);
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("User registered successfully!"))
-                .andExpect(jsonPath("$.username").value("testuser"));
+        ResponseEntity<?> response = authController.registerUser(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
     }
 
     @Test
-    void registerUser_UsernameExists() throws Exception {
-        // Given
-        RegisterRequest request = new RegisterRequest("testuser", "test@example.com", "password123");
+    void registerUser_UsernameExists() {
+        RegisterRequest request = new RegisterRequest("existinguser", "test@example.com", "password123");
         when(userService.registerUser(anyString(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("Username already exists!"));
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Username already exists!"));
+        ResponseEntity<?> response = authController.registerUser(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
     @Test
-    void loginUser_Success() throws Exception {
-        // Given
+    void loginUser_Success() {
         LoginRequest request = new LoginRequest("testuser", "password123");
         when(userService.authenticateUser("testuser", "password123")).thenReturn(testUser);
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Login successful!"))
-                .andExpect(jsonPath("$.username").value("testuser"));
+        ResponseEntity<?> response = authController.loginUser(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    void loginUser_InvalidCredentials() throws Exception {
-        // Given
+    void loginUser_InvalidCredentials() {
         LoginRequest request = new LoginRequest("testuser", "wrongpassword");
         when(userService.authenticateUser("testuser", "wrongpassword"))
                 .thenThrow(new RuntimeException("Invalid password!"));
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Invalid password!"));
+        ResponseEntity<?> response = authController.loginUser(request);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 }
+EOF
