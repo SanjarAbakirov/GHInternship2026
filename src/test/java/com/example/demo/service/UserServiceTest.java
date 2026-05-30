@@ -1,5 +1,4 @@
-
-        package com.example.demo.service;
+package com.example.demo.service;
 
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
@@ -109,4 +108,3 @@ class UserServiceTest {
         assertEquals("Invalid password!", exception.getMessage());
     }
 }
-EOF
