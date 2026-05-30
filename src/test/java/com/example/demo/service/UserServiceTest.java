@@ -1,4 +1,4 @@
-cat > src/test/java/com/example/demo/service/UserServiceTest.java << 'EOF'
+
         package com.example.demo.service;
 
 import com.example.demo.model.User;
