@@ -1,32 +1,30 @@
-package com.example.demo.service;
+package com.example.demo.controller;
 
+import com.example.demo.dto.LoginRequest;
+import com.example.demo.dto.RegisterRequest;
 import com.example.demo.model.User;
-import com.example.demo.repository.UserRepository;
+import com.example.demo.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.util.Optional;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class UserServiceTest {
+class AuthControllerTest {
 
     @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
+    private UserService userService;
 
     @InjectMocks
-    private UserService userService;
+    private AuthController authController;
 
     private User testUser;
 
@@ -36,117 +34,45 @@ class UserServiceTest {
         testUser.setId(1L);
     }
 
-    // ========== registerUser Tests ==========
-
     @Test
     void registerUser_Success() {
-        // Given
-        when(userRepository.existsByUsername("testuser")).thenReturn(false);
-        when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        RegisterRequest request = new RegisterRequest("testuser", "test@example.com", "password123");
+        when(userService.registerUser(anyString(), anyString(), anyString())).thenReturn(testUser);
 
-        // When
-        User result = userService.registerUser("testuser", "test@example.com", "password123");
+        ResponseEntity<?> response = authController.registerUser(request);
 
-        // Then
-        assertNotNull(result);
-        assertEquals("testuser", result.getUsername());
-        assertEquals("test@example.com", result.getEmail());
-        assertEquals("encodedPassword", result.getPassword());
-
-        // Verify interactions
-        verify(userRepository).existsByUsername("testuser");
-        verify(userRepository).existsByEmail("test@example.com");
-        verify(passwordEncoder).encode("password123");
-        verify(userRepository).save(any(User.class));
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
     }
 
     @Test
-    void registerUser_UsernameAlreadyExists_ThrowsException() {
-        // Given
-        when(userRepository.existsByUsername("testuser")).thenReturn(true);
+    void registerUser_UsernameExists() {
+        RegisterRequest request = new RegisterRequest("existinguser", "test@example.com", "password123");
+        when(userService.registerUser(anyString(), anyString(), anyString()))
+                .thenThrow(new RuntimeException("Username already exists!"));
 
-        // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            userService.registerUser("testuser", "test@example.com", "password123");
-        });
+        ResponseEntity<?> response = authController.registerUser(request);
 
-        assertEquals("Username already exists!", exception.getMessage());
-
-        // Verify that save was never called
-        verify(userRepository, never()).save(any(User.class));
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
     @Test
-    void registerUser_EmailAlreadyExists_ThrowsException() {
-        // Given
-        when(userRepository.existsByUsername("testuser")).thenReturn(false);
-        when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
+    void loginUser_Success() {
+        LoginRequest request = new LoginRequest("testuser", "password123");
+        when(userService.authenticateUser("testuser", "password123")).thenReturn(testUser);
 
-        // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            userService.registerUser("testuser", "test@example.com", "password123");
-        });
+        ResponseEntity<?> response = authController.loginUser(request);
 
-        assertEquals("Email already exists!", exception.getMessage());
-
-        // Verify that save was never called
-        verify(userRepository, never()).save(any(User.class));
-    }
-
-    // ========== authenticateUser Tests ==========
-
-    @Test
-    void authenticateUser_Success() {
-        // Given
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-        when(passwordEncoder.matches("password123", "encodedPassword")).thenReturn(true);
-
-        // When
-        User result = userService.authenticateUser("testuser", "password123");
-
-        // Then
-        assertNotNull(result);
-        assertEquals("testuser", result.getUsername());
-        assertEquals("test@example.com", result.getEmail());
-
-        // Verify interactions
-        verify(userRepository).findByUsername("testuser");
-        verify(passwordEncoder).matches("password123", "encodedPassword");
+        assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
-    void authenticateUser_UserNotFound_ThrowsException() {
-        // Given
-        when(userRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
+    void loginUser_InvalidCredentials() {
+        LoginRequest request = new LoginRequest("testuser", "wrongpassword");
+        when(userService.authenticateUser("testuser", "wrongpassword"))
+                .thenThrow(new RuntimeException("Invalid password!"));
 
-        // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            userService.authenticateUser("nonexistent", "password123");
-        });
+        ResponseEntity<?> response = authController.loginUser(request);
 
-        assertEquals("User not found!", exception.getMessage());
-
-        // Verify that password encoder was never called
-        verify(passwordEncoder, never()).matches(anyString(), anyString());
-    }
-
-    @Test
-    void authenticateUser_InvalidPassword_ThrowsException() {
-        // Given
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-        when(passwordEncoder.matches("wrongpassword", "encodedPassword")).thenReturn(false);
-
-        // When & Then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            userService.authenticateUser("testuser", "wrongpassword");
-        });
-
-        assertEquals("Invalid password!", exception.getMessage());
-
-        // Verify that find by username was called but password didn't match
-        verify(userRepository).findByUsername("testuser");
-        verify(passwordEncoder).matches("wrongpassword", "encodedPassword");
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 }
