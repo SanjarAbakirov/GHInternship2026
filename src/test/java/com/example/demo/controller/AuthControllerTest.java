@@ -1,5 +1,4 @@
-cat > src/test/java/com/example/demo/controller/AuthControllerTest.java << 'EOF'
-        package com.example.demo.controller;
+package com.example.demo.controller;
 
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
