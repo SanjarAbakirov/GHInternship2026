@@ -16,6 +16,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
+private String token;
+public AuthResponse(boolean success, String message, String username, String token) {
+    this.success = success;
+    this.message = message;
+    this.username = username;
+    this.token = token;
+}
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
