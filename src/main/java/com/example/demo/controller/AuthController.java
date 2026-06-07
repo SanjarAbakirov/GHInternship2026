@@ -106,4 +106,23 @@ public class AuthController {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody RegisterRequest request) {
+        User newUser = userService.registerUser(...);
+        String token = jwtUtil.generateToken(newUser.getUsername());
+        AuthResponse response = new AuthResponse(true, "User registered successfully!", newUser.getUsername(), token);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> loginUser(@RequestBody LoginRequest request) {
+        User user = userService.authenticateUser(...);
+        String token = jwtUtil.generateToken(user.getUsername());
+        AuthResponse response = new AuthResponse(true, "Login successful!", user.getUsername(), token);
+        return ResponseEntity.ok(response);
+    }
 }
