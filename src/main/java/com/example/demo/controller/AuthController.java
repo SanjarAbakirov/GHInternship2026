@@ -4,25 +4,13 @@ import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.model.User;
+import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
-
-private String token;
-public AuthResponse(boolean success, String message, String username, String token) {
-    this.success = success;
-    this.message = message;
-    this.username = username;
-    this.token = token;
-}
 
 @RestController
 @RequestMapping("/api/auth")
@@ -31,98 +19,39 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
-    // Эндпоинт для регистрации
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
-        try {
-            User newUser = userService.registerUser(
-                    registerRequest.getUsername(),
-                    registerRequest.getEmail(),
-                    registerRequest.getPassword()
-            );
-
-            AuthResponse response = new AuthResponse(
-                    true,
-                    "User registered successfully!",
-                    newUser.getUsername()
-            );
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
-        } catch (RuntimeException e) {
-            AuthResponse response = new AuthResponse(
-                    false,
-                    e.getMessage(),
-                    null
-            );
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
-    }
-
-    // Эндпоинт для логина
-    @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
-        try {
-            User authenticatedUser = userService.authenticateUser(
-                    loginRequest.getUsername(),
-                    loginRequest.getPassword()
-            );
-
-            AuthResponse response = new AuthResponse(
-                    true,
-                    "Login successful!",
-                    authenticatedUser.getUsername()
-            );
-
-            return ResponseEntity.ok(response);
-
-        } catch (RuntimeException e) {
-            AuthResponse response = new AuthResponse(
-                    false,
-                    e.getMessage(),
-                    null
-            );
-
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
-    }
-
-    // Обработчик ошибок валидации
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-
-        AuthResponse response = new AuthResponse(
-                false,
-                "Validation failed: " + errors.toString(),
-                null
-        );
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-    }
-
     @Autowired
     private JwtUtil jwtUtil;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody RegisterRequest request) {
-        User newUser = userService.registerUser(...);
+        User newUser = userService.registerUser(
+                request.getUsername(),
+                request.getEmail(),
+                request.getPassword()
+        );
         String token = jwtUtil.generateToken(newUser.getUsername());
-        AuthResponse response = new AuthResponse(true, "User registered successfully!", newUser.getUsername(), token);
+        AuthResponse response = new AuthResponse(
+                true,
+                "User registered successfully!",
+                newUser.getUsername(),
+                token
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> loginUser(@RequestBody LoginRequest request) {
-        User user = userService.authenticateUser(...);
+        User user = userService.authenticateUser(
+                request.getUsername(),
+                request.getPassword()
+        );
         String token = jwtUtil.generateToken(user.getUsername());
-        AuthResponse response = new AuthResponse(true, "Login successful!", user.getUsername(), token);
+        AuthResponse response = new AuthResponse(
+                true,
+                "Login successful!",
+                user.getUsername(),
+                token
+        );
         return ResponseEntity.ok(response);
     }
 }
