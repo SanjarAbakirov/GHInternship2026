@@ -1,4 +1,6 @@
+// src/main/java/com/example/demo/security/JwtUtil.java
 package com.example.demo.securities;
+
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
@@ -8,7 +10,7 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
-    private final SecretKey key = Keys.hmacShaKeyFor("my-very-secret-key-my-very-secret-key".getBytes()); // минимум 32 байта
+    private final SecretKey key = Keys.hmacShaKeyFor("my-very-secret-key-my-very-secret-key".getBytes());
     private final long expirationMs = 3600000; // 1 час
 
     public String generateToken(String username) {
