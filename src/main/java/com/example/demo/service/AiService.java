@@ -11,7 +11,10 @@ import java.util.Map;
 @Service
 public class AiService {
 
-    @Value("${openai.api.key}")
+//    @Value("${openai.api.key}")
+//    private String apiKey;
+
+    @Value("${openai.api.key:#{systemEnvironment['OPENAI_API_KEY']}}")
     private String apiKey;
 
     @Value("${openai.api.url}")
@@ -33,4 +36,5 @@ public class AiService {
         ResponseEntity<Map> response = restTemplate.postForEntity(apiUrl, entity, Map.class);
         return response.getBody().get("choices").toString();
     }
+
 }
