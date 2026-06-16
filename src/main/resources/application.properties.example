@@ -1,0 +1,3 @@
+# AI Service
+openai.api.key=your-openai-api-key-here
+openai.api.url=https://api.openai.com/v1/chat/completions
