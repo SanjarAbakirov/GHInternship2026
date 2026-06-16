@@ -1,28 +1,24 @@
 package com.example.demo.controller;
-import com.example.demo.service.AiService;
+import com.example.demo.dto.ChatRequest;
+import com.example.demo.dto.ChatResponse;
+import com.example.demo.service.ChatService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
 public class ChatController {
 
-    private final AiService aiService;
+    private final ChatService chatService;
 
-    public ChatController(AiService aiService) {
-        this.aiService = aiService;
+    public ChatController(ChatService chatService) {
+        this.chatService = chatService;
     }
 
     @PostMapping
-    public ResponseEntity<?> chat(@RequestBody Map<String, String> request) {
-        String userMessage = request.get("message");
-        try {
-            String reply = aiService.getChatResponse(userMessage);
-            return ResponseEntity.ok(Map.of("reply", reply));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "AI service unavailable"));
-        }
+    public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
+        String aiReply = chatService.getChatReply(request.getMessage());
+        return ResponseEntity.ok(new ChatResponse(aiReply));
     }
 }
