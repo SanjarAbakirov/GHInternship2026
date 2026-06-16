@@ -3,14 +3,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
 import java.util.List;
 import java.util.Map;
 
 @Service
-public class AiService {
-
-//    @Value("${openai.api.key}")
-//    private String apiKey;
+public class ChatService {
 
     @Value("${openai.api.key:#{systemEnvironment['OPENAI_API_KEY']}}")
     private String apiKey;
@@ -18,7 +16,7 @@ public class AiService {
     @Value("${openai.api.url}")
     private String apiUrl;
 
-    public String getChatResponse(String userMessage) {
+    public String getChatReply(String userMessage) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(apiKey);
@@ -32,7 +30,10 @@ public class AiService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
         ResponseEntity<Map> response = restTemplate.postForEntity(apiUrl, entity, Map.class);
-        return response.getBody().get("choices").toString();
-    }
 
+        // Извлекаем текст ответа ассистента
+        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
+        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+        return (String) message.get("content");
+    }
 }
