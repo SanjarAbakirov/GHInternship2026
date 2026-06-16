@@ -23,18 +23,14 @@ public class UserEntity {
     //for name
     @Column(name = "name", nullable = false, length = 50)
     private String name;
-
     //for email
     @Column(name = "email", unique = true, nullable = false)
     private String email;
-
     //for phone
     @Column(name = "phone")
     private int telephone;
-
     public UserEntity() { // empty constructor for JPA
     }
-
 
     //construction with parameters
     public UserEntity(String name, String email, Integer telephone) {

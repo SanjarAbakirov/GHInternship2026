@@ -129,4 +129,4 @@ yarn-error.log*
 .pnpm-debug.log*
 
 
-echo "src/main/resources/application.properties"
+echo "src/main/resources/application.properties"src/main/resources/application.properties
