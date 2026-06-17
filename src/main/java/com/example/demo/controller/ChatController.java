@@ -3,9 +3,11 @@ import com.example.demo.dto.ChatRequest;
 import com.example.demo.dto.ChatResponse;
 import com.example.demo.service.ChatService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/chat")
 public class ChatController {
