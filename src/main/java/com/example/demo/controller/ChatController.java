@@ -22,3 +22,6 @@ public class ChatController {
         return ResponseEntity.ok(new ChatResponse(aiReply));
     }
 }
+//logging - need to check out logging
+// create log messages APi controllers - gpt
+// lgo-messages - когда сервер выдает инфо о себе что происходит
