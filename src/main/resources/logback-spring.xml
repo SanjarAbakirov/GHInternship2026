@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-<!-- Переменные для указания путей -->
 <property name="LOGS_DIR" value="./logs" />
 
-<!-- Appender для вывода в консоль -->
 <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
         <pattern>%d{yyyy-MM-dd HH:mm:ss} %highlight(%-5level) %magenta([%thread]) %cyan(%logger{36}) - %msg%n</pattern>
     </encoder>
 </appender>
 
-<!-- Appender для записи в файл (все сообщения) -->
 <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>${LOGS_DIR}/app.log</file>
     <encoder>
@@ -22,7 +19,6 @@
     </rollingPolicy>
 </appender>
 
-<!-- Appender для ошибок (только ERROR) в отдельный файл -->
 <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>${LOGS_DIR}/errors.log</file>
     <encoder>
@@ -37,13 +33,11 @@
     </rollingPolicy>
 </appender>
 
-<!-- Уровни логирования -->
 <root level="INFO">
     <appender-ref ref="CONSOLE" />
     <appender-ref ref="FILE" />
     <appender-ref ref="ERROR_FILE" />
 </root>
 
-<!-- Для пакетов проекта — более подробный уровень DEBUG -->
 <logger name="com.example.demo" level="DEBUG" />
 </configuration>
