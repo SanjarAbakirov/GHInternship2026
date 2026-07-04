@@ -1,5 +1,6 @@
-package com.example.demo;
+package com.example.demo.controller;
 
+import com.example.demo.dto.UserResponse;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,13 +22,10 @@ public class Controller {
 
     // Временный эндпоинт для проверки пользователей в БД
     @GetMapping("/api/users")
-    public List<String> getUsers() {
+    public List<UserResponse> getUsers() {
         List<User> users = userRepository.findAll();
         return users.stream()
-                .map(user -> "ID: " + user.getId() +
-                        ", Username: " + user.getUsername() +
-                        ", Email: " + user.getEmail() +
-                        ", Password (hashed): " + user.getPassword().substring(0, 20) + "...")
+                .map(user -> new UserResponse(user.getId(), user.getUsername(), user.getEmail()))
                 .collect(Collectors.toList());
     }
 }

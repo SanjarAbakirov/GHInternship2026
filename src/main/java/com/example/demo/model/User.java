@@ -1,10 +1,7 @@
 package com.example.demo.model;
 import jakarta.persistence.*;
-import lombok.Getter;
-
 import java.time.LocalDateTime;
 
-@Getter
 @Entity
 @Table(name = "users")
 public class User {
@@ -25,6 +22,26 @@ public class User {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 
     // Конструкторы
     public User() {}
