@@ -4,14 +4,14 @@
 
 <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-        <pattern>%d{yyyy-MM-dd HH:mm:ss} %highlight(%-5level) %magenta([%thread]) %cyan(%logger{36}) - %msg%n</pattern>
+        <pattern>%d{yyyy-MM-dd HH:mm:ss} %highlight(%-5level) %magenta([%thread]) [%X{correlationId}] %cyan(%logger{36}) - %msg%n</pattern>
     </encoder>
 </appender>
 
 <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>${LOGS_DIR}/app.log</file>
     <encoder>
-        <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{correlationId}] %logger{36} - %msg%n</pattern>
     </encoder>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
         <fileNamePattern>${LOGS_DIR}/app.%d{yyyy-MM-dd}.log</fileNamePattern>
@@ -22,7 +22,7 @@
 <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>${LOGS_DIR}/errors.log</file>
     <encoder>
-        <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{correlationId}] %logger{36} - %msg%n</pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
         <level>ERROR</level>

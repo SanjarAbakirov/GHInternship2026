@@ -13,6 +13,7 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Ошибка AI-сервиса
     @ExceptionHandler(AiServiceException.class)
@@ -57,6 +58,7 @@ public class GlobalExceptionHandler {
     // Общая ошибка 500
     @ExceptionHandler(Exception.class)
     public ResponseEntity<AuthResponse> handleGeneral(Exception ex, WebRequest request) {
+        log.error("Unhandled exception caught during request processing: ", ex);
         AuthResponse response = new AuthResponse(false, "Internal server error", null, null);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }

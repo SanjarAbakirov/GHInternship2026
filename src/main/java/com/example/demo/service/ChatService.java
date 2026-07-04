@@ -11,6 +11,7 @@ import java.util.Map;
 
 @Service
 public class ChatService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChatService.class);
 
     @Value("${openai.api.key:#{systemEnvironment['OPENAI_API_KEY']}}")
     private String apiKey;
@@ -38,6 +39,7 @@ public class ChatService {
             Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
             return (String) message.get("content");
         } catch (Exception e) {
+            log.error("Failed to get reply from AI service. API call failed.", e);
             throw new AiServiceException("AI service is currently unavailable. Please try again later.");
         }
     }
