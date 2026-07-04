@@ -4,6 +4,7 @@ import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.model.User;
+import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class AuthControllerTest {
 
     private AuthController authController;
+    private JwtUtil jwtUtil;
     private UserServiceStub userServiceStub;
     private User testUser;
 
@@ -22,10 +24,16 @@ class AuthControllerTest {
     void setUp() {
         userServiceStub = new UserServiceStub();
         authController = new AuthController();
+        jwtUtil = new JwtUtil("super_secret_test_key_must_be_256_bits_long");
         try {
             var field = AuthController.class.getDeclaredField("userService");
             field.setAccessible(true);
             field.set(authController, userServiceStub);
+
+            var jwtField = AuthController.class.getDeclaredField("jwtUtil");
+            jwtField.setAccessible(true);
+            jwtField.set(authController, jwtUtil);
+            
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
