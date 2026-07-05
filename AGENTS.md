@@ -6,11 +6,15 @@
   - Проведен подробный аудит проекта (включая "атомный аудит" Python-инструментами и Java-плагинами: Checkstyle).
   - Найдены ошибки Checkstyle и падающие тесты (NullPointerException в `AuthControllerTest`).
   - Восстановлен случайно удаленный файл `UserService.java` из истории Git (он нужен для регистрации и аутентификации).
-  - Был согласован план рефакторинга (`implementation_plan.md`), к которому планируется приступить в ближайшее время.
+  - Был согласован и полностью выполнен план рефакторинга:
+    - Удален проблемный Lombok из-за несовместимости с Java 25.
+    - Починены тесты в `AuthControllerTest` (добавлена инициализация `JwtUtil`).
+    - Секретный ключ JWT вынесен в `application.properties`.
+    - `Controller.java` перемещен в пакет `controller`, создан `UserResponse` DTO для сокрытия паролей.
+    - Добавлено логирование (`log.error`) в `GlobalExceptionHandler` и `ChatService`.
+    - В `logback-spring.xml` добавлен токен `%X{correlationId}` для всех аппендеров.
 
 ## Планы (Next Steps)
-1. Починить тесты в `AuthControllerTest` (добавить моки или исправить NullPointerException).
-2. Вынести секретный ключ JWT в `application.properties`.
-3. Переместить `Controller.java` обратно в пакет `controller` и создать `UserResponse` DTO для сокрытия паролей.
-4. Добавить нормальное логирование (`log.error`) в `GlobalExceptionHandler` и `ChatService`.
-5. Починить `logback-spring.xml` (добавить `%X{correlationId}`).
+1. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
+2. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
+3. Дальнейшее расширение функционала (по запросу).
