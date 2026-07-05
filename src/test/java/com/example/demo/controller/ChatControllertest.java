@@ -11,11 +11,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import com.example.demo.config.SecurityConfig;
+import com.example.demo.security.JwtAuthenticationFilter;
+import com.example.demo.security.JwtUtil;
 
 // Запускаем тест только для ChatController
 @WebMvcTest(ChatController.class)
 // Подтягиваем нашу реальную конфигурацию безопасности, чтобы проверить 401 статус
-@Import({SecurityConfig.java, JwtAuthenticationFilter.java, JwtUtil.java})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, JwtUtil.class})
 // Указываем тестовый секретный ключ, чтобы JwtUtil смог запуститься
 @TestPropertySource(properties = "jwt.secret=my-super-secret-key-for-tests-1234567890")
 public class ChatControllerTest {
@@ -26,5 +29,4 @@ public class ChatControllerTest {
     // Изолируем реальный ChatService (мы не хотим делать реальные запросы к OpenAI в тестах)
     @MockitoBean
     private ChatService chatService;
-
 }
