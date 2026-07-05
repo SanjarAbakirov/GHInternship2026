@@ -7,7 +7,7 @@ import com.example.demo.service.ChatService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,7 +24,7 @@ public class ChatControllerTest {
     private MockMvc mockMvc;
 
     // Изолируем реальный ChatService (мы не хотим делать реальные запросы к OpenAI в тестах)
-    @MockBean
+    @MockitoBean
     private ChatService chatService;
 
 }
