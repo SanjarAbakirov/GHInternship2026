@@ -14,6 +14,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.example.demo.config.SecurityConfig;
 import com.example.demo.security.JwtAuthenticationFilter;
 import com.example.demo.security.JwtUtil;
+import org.springframework.http.MediaType;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // Запускаем тест только для ChatController
 @WebMvcTest(ChatController.class)
@@ -29,4 +32,14 @@ public class ChatControllerTest {
     // Изолируем реальный ChatService (мы не хотим делать реальные запросы к OpenAI в тестах)
     @MockitoBean
     private ChatService chatService;
+
+    @Test
+    public void whenNoTokenProvided_thenReturns401() throws Exception {
+        // Имитируем POST-запрос на защищенный эндпоинт БЕЗ заголовка Authorization
+        mockMvc.perform(post("/api/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Hello AI!\"}"))
+                // Мы ожидаем, что сервер отвергнет запрос и вернет статус 401 Unauthorized
+                .andExpect(status().isUnauthorized());
+    }
 }
