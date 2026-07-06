@@ -19,6 +19,12 @@ public class ChatService {
     @Value("${openai.api.url}")
     private String apiUrl;
 
+    private final RestTemplate restTemplate;
+
+    public ChatService(RestTemplate restTemplate){
+        this.restTemplate = restTemplate;
+    }
+
     public String getChatReply(String userMessage) {
         try {
             RestTemplate restTemplate = new RestTemplate();
