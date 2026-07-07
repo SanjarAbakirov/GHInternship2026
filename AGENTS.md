@@ -13,7 +13,8 @@
     - `Controller.java` перемещен в пакет `controller`, создан `UserResponse` DTO для сокрытия паролей.
     - Добавлено логирование (`log.error`) в `GlobalExceptionHandler` и `ChatService`.
     - В `logback-spring.xml` добавлен токен `%X{correlationId}` для всех аппендеров.
-
+    - В `SecurityConfig.java` настроен `AuthenticationEntryPoint` для возврата HTTP 401 вместо 403.
+    - Реализованы Unit-тесты для `ChatController` (`@WithMockUser`, `MockMvc`) и `ChatService` (внедрен `RestTemplate`, использован `Mockito` для тестов без сети).
 ## Планы (Next Steps)
 1. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
 2. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).

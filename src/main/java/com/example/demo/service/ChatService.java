@@ -27,7 +27,6 @@ public class ChatService {
 
     public String getChatReply(String userMessage) {
         try {
-            RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(apiKey);
             headers.setContentType(MediaType.APPLICATION_JSON);
