@@ -53,4 +53,15 @@ class ChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply").value("Mocked AI reply"));
     }
+
+    @Test
+    void whenMessageIsBlank_thenReturns400() throws Exception {
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(post("/api/chat")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
 }
