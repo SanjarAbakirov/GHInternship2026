@@ -127,6 +127,3 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-
-echo "src/main/resources/application.properties"src/main/resources/application.properties
