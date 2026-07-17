@@ -1,9 +1,5 @@
-# AI Service
-openai.api.key=your-openai-api-key-here
-openai.api.url=https://api.openai.com/v1/chat/completions
-
-
-# Copy to application-local.properties and fill in real values
+# Copy to application-local.properties (gitignored) and fill real values.
+# Or export: OPENAI_API_KEY, JWT_SECRET
 
 openai.api.key=your-openai-api-key-here
 openai.api.url=https://api.openai.com/v1/chat/completions

@@ -11,9 +11,11 @@ target/
 application-local.properties
 application-dev.properties
 application-prod-local.properties
+src/main/resources/application.properties
 *.pid
 *.spring
 spring-shell.log
+node_modules/ss   →  node_modules/
 
 ### STS ###
 .apt_generated
@@ -127,3 +129,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+src/main/resources/application-local.properties
+src/main/resources/application.properties.local
