@@ -15,6 +15,9 @@
     - В `logback-spring.xml` добавлен токен `%X{correlationId}` для всех аппендеров.
     - В `SecurityConfig.java` настроен `AuthenticationEntryPoint` для возврата HTTP 401 вместо 403.
     - Реализованы Unit-тесты для `ChatController` (`@WithMockUser`, `MockMvc`) и `ChatService` (внедрен `RestTemplate`, использован `Mockito` для тестов без сети).
+  - Упрощен `API Key Management` для 100% соответствия заданию Week 6 (игнорируется `application.properties`, упрощен `@Value`).
+  - Переписан компонент чата на фронтенде (сохранение динамической истории сообщений).
+  - Добавлен `Chat.test.js` с моками `axios` и тестами UI компонентов React.
 ## Планы (Next Steps)
 1. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
 2. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).

@@ -15,7 +15,7 @@ import java.util.Map;
 public class ChatService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChatService.class);
 
-    @Value("${openai.api.key:#{systemEnvironment['OPENAI_API_KEY']}}")
+    @Value("${openai.api.key}")
     private String apiKey;
 
     @Value("${openai.api.url}")
