@@ -21,6 +21,9 @@ public class ChatService {
     @Value("${openai.api.url}")
     private String apiUrl;
 
+    @Value("${openai.api.model:deepseek-chat}")
+    private String apiModel;
+
     private final RestTemplate restTemplate;
 
     public ChatService(RestTemplate restTemplate){
@@ -34,7 +37,7 @@ public class ChatService {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             Map<String, Object> body = Map.of(
-                    "model", "gpt-3.5-turbo",
+                    "model", apiModel,
                     "messages", List.of(Map.of("role", "user", "content", userMessage)),
                     "max_tokens", 150
             );
