@@ -1,6 +1,7 @@
-# Copy to application-local.properties (gitignored) and fill real values.
-# Or export: OPENAI_API_KEY, JWT_SECRET
+# Copy this file to application-local.properties (gitignored) and fill real values.
+# Or export env vars: OPENAI_API_KEY, OPENAI_API_URL, OPENAI_API_MODEL, JWT_SECRET
 
 openai.api.key=your-openai-api-key-here
 openai.api.url=https://api.openai.com/v1/chat/completions
+openai.api.model=gpt-3.5-turbo
 jwt.secret=your-jwt-secret-at-least-256-bits-long

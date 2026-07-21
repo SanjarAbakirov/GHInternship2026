@@ -21,7 +21,7 @@ public class ChatService {
     @Value("${openai.api.url}")
     private String apiUrl;
 
-    @Value("${openai.api.model:deepseek-chat}")
+    @Value("${openai.api.model:gpt-3.5-turbo}")
     private String apiModel;
 
     private final RestTemplate restTemplate;
