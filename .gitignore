@@ -8,9 +8,8 @@ target/
 *.class
 
 ### Spring Boot specific ###
-application.properties
 application-dev.properties
-application-prod-local.properties
+application-local.properties
 
 *.pid
 *.spring
