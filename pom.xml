@@ -71,6 +71,21 @@
         <scope>runtime</scope>
     </dependency>
 
+
+    <!-- PostgreSQL JDBC (версию берёт Spring Boot 3.4.1) -->
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+    <!-- H2 только для тестов -->
+    <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <scope>test</scope>
+    </dependency>
+
 </dependencies>
 <build>
     <plugins>
