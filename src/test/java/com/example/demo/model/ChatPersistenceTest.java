@@ -57,4 +57,26 @@ class ChatPersistenceTest {
         assertTrue(chatSessionRepository.findById(sessionId).isEmpty());
         assertTrue(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId).isEmpty());
     }
+
+    @Test
+    void findByUserIdOrderByLastActivityDesc_returnsMostRecentlyActiveFirst() throws InterruptedException {
+        User owner = userRepository.save(new User("activeuser", "active@example.com", "password"));
+
+        ChatSession older = new ChatSession("Older session", owner);
+        older.addMessage(new ChatMessage("first", ChatMessage.ROLE_USER));
+        older = chatSessionRepository.saveAndFlush(older);
+
+        Thread.sleep(20);
+
+        ChatSession newer = new ChatSession("Newer session", owner);
+        newer.addMessage(new ChatMessage("later", ChatMessage.ROLE_USER));
+        newer = chatSessionRepository.saveAndFlush(newer);
+
+        var sessions = chatSessionRepository.findByUserIdOrderByLastActivityDesc(owner.getId());
+
+        assertEquals(2, sessions.size());
+        assertEquals(newer.getId(), sessions.get(0).getId());
+        assertEquals(older.getId(), sessions.get(1).getId());
+        assertEquals(1, chatMessageRepository.countBySessionId(newer.getId()));
+    }
 }
