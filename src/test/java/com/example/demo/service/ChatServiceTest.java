@@ -30,6 +30,7 @@ public class ChatServiceTest {
         
         ReflectionTestUtils.setField(chatService, "apiKey", "test-api-key");
         ReflectionTestUtils.setField(chatService, "apiUrl", "http://test.api.url");
+        ReflectionTestUtils.setField(chatService, "apiModel", "gpt-3.5-turbo");
     }
 
     @Test
