@@ -1,17 +1,22 @@
 # Copy secrets to application-local.properties (gitignored) OR export env vars.
 # Prefer the same values as in your local .env used by Docker Compose.
+#
+# Profiles:
+#   dev  (default)  -> application-dev.properties  (ddl-auto=update)
+#   prod            -> application-prod.properties (ddl-auto=validate)
+#   test            -> used automatically by Maven tests (H2)
 
-# Database (PostgreSQL)
-# SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/internship_db
-# SPRING_DATASOURCE_USERNAME=internship_user
-# SPRING_DATASOURCE_PASSWORD=change_me_strong_password
-
-# Or set via application-local.properties:
+# --- application-local.properties example ---
 # spring.datasource.url=jdbc:postgresql://localhost:5432/internship_db
 # spring.datasource.username=internship_user
 # spring.datasource.password=change_me_strong_password
+# jwt.secret=your-jwt-secret-at-least-256-bits-long
+# openai.api.key=your-openai-api-key-here
 
-openai.api.key=your-openai-api-key-here
-openai.api.url=https://api.openai.com/v1/chat/completions
-openai.api.model=gpt-3.5-turbo
-jwt.secret=your-jwt-secret-at-least-256-bits-long
+# --- or environment variables ---
+# SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/internship_db
+# SPRING_DATASOURCE_USERNAME=internship_user
+# SPRING_DATASOURCE_PASSWORD=change_me_strong_password
+# JWT_SECRET=your-jwt-secret-at-least-256-bits-long
+# OPENAI_API_KEY=your-openai-api-key-here
+# SPRING_PROFILES_ACTIVE=dev
