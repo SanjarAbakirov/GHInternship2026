@@ -1,19 +1,29 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.ChatResponse;
 import com.example.demo.exception.AiServiceException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.model.ChatMessage;
+import com.example.demo.model.ChatSession;
+import com.example.demo.model.User;
+import com.example.demo.repository.ChatMessageRepository;
+import com.example.demo.repository.ChatSessionRepository;
+import com.example.demo.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
-
-
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class ChatService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChatService.class);
+    private static final int TITLE_MAX_LENGTH = 80;
 
     @Value("${openai.api.key}")
     private String apiKey;
@@ -25,9 +35,69 @@ public class ChatService {
     private String apiModel;
 
     private final RestTemplate restTemplate;
+    private final UserRepository userRepository;
+    private final ChatSessionRepository chatSessionRepository;
+    private final ChatMessageRepository chatMessageRepository;
 
-    public ChatService(RestTemplate restTemplate){
+    public ChatService(
+            RestTemplate restTemplate,
+            UserRepository userRepository,
+            ChatSessionRepository chatSessionRepository,
+            ChatMessageRepository chatMessageRepository) {
         this.restTemplate = restTemplate;
+        this.userRepository = userRepository;
+        this.chatSessionRepository = chatSessionRepository;
+        this.chatMessageRepository = chatMessageRepository;
+    }
+
+    /**
+     * Persists the conversation and returns the AI reply with the session id.
+     * Creates a new {@link ChatSession} when {@code chatSessionId} is null.
+     */
+    @Transactional
+    public ChatResponse chat(String username, String userMessage, Long chatSessionId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+
+        ChatSession session = resolveSession(user, chatSessionId, userMessage);
+
+        ChatMessage userChatMessage = new ChatMessage(userMessage, ChatMessage.ROLE_USER, session);
+        session.addMessage(userChatMessage);
+        chatMessageRepository.save(userChatMessage);
+        log.info("Saved user message for session {}", session.getId());
+
+        String aiReply = getChatReply(userMessage);
+
+        ChatMessage aiChatMessage = new ChatMessage(aiReply, ChatMessage.ROLE_AI, session);
+        session.addMessage(aiChatMessage);
+        chatMessageRepository.save(aiChatMessage);
+        log.info("Saved AI message for session {}", session.getId());
+
+        return new ChatResponse(aiReply, session.getId());
+    }
+
+    private ChatSession resolveSession(User user, Long chatSessionId, String firstMessage) {
+        if (chatSessionId == null) {
+            String title = buildTitleFromMessage(firstMessage);
+            ChatSession created = chatSessionRepository.save(new ChatSession(title, user));
+            log.info("Created chat session {} for user {}", created.getId(), user.getUsername());
+            return created;
+        }
+
+        return chatSessionRepository.findByIdAndUserId(chatSessionId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Chat session not found or not owned by user: " + chatSessionId));
+    }
+
+    private String buildTitleFromMessage(String message) {
+        String normalized = message == null ? "" : message.trim().replaceAll("\\s+", " ");
+        if (normalized.isEmpty()) {
+            return "New chat";
+        }
+        if (normalized.length() <= TITLE_MAX_LENGTH) {
+            return normalized;
+        }
+        return normalized.substring(0, TITLE_MAX_LENGTH - 3) + "...";
     }
 
     public String getChatReply(String userMessage) {
