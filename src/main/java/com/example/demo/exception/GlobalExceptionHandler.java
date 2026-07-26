@@ -36,6 +36,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<AuthResponse> handleResourceNotFound(ResourceNotFoundException ex) {
+        AuthResponse response = new AuthResponse(false, ex.getMessage(), null, null);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     // Ошибки валидации Bean Validation
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<AuthResponse> handleValidation(MethodArgumentNotValidException ex) {

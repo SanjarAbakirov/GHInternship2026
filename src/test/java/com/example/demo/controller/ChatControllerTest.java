@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.config.SecurityConfig;
+import com.example.demo.dto.ChatResponse;
 import com.example.demo.security.JwtAuthenticationFilter;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.ChatService;
@@ -41,8 +42,9 @@ class ChatControllerTest {
     }
 
     @Test
-    void whenValidTokenProvided_thenReturns200WithReply() throws Exception {
-        Mockito.when(chatService.getChatReply("Hello AI!")).thenReturn("Mocked AI reply");
+    void whenValidTokenProvided_thenReturns200WithReplyAndSessionId() throws Exception {
+        Mockito.when(chatService.chat("testuser", "Hello AI!", null))
+                .thenReturn(new ChatResponse("Mocked AI reply", 5L));
 
         String token = jwtUtil.generateToken("testuser");
 
@@ -51,7 +53,24 @@ class ChatControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"Hello AI!\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reply").value("Mocked AI reply"));
+                .andExpect(jsonPath("$.reply").value("Mocked AI reply"))
+                .andExpect(jsonPath("$.chatSessionId").value(5));
+    }
+
+    @Test
+    void whenExistingSessionIdProvided_thenPassesItToService() throws Exception {
+        Mockito.when(chatService.chat("testuser", "Follow up", 5L))
+                .thenReturn(new ChatResponse("Next reply", 5L));
+
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(post("/api/chat")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Follow up\",\"chatSessionId\":5}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chatSessionId").value(5))
+                .andExpect(jsonPath("$.reply").value("Next reply"));
     }
 
     @Test
