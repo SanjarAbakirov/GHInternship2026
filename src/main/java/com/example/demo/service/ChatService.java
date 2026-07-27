@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.dto.ChatResponse;
+import com.example.demo.dto.ChatSessionResponse;
 import com.example.demo.exception.AiServiceException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.model.ChatMessage;
@@ -11,6 +13,7 @@ import com.example.demo.repository.ChatSessionRepository;
 import com.example.demo.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -56,8 +59,7 @@ public class ChatService {
      */
     @Transactional
     public ChatResponse chat(String username, String userMessage, Long chatSessionId) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+        User user = requireUser(username);
 
         ChatSession session = resolveSession(user, chatSessionId, userMessage);
 
@@ -74,6 +76,45 @@ public class ChatService {
         log.info("Saved AI message for session {}", session.getId());
 
         return new ChatResponse(aiReply, session.getId());
+    }
+
+    /**
+     * Returns all chat sessions for the authenticated user, ordered by last activity.
+     */
+    @Transactional(readOnly = true)
+    public List<ChatSessionResponse> listSessions(String username) {
+        User user = requireUser(username);
+        return chatSessionRepository.findByUserIdOrderByLastActivityDesc(user.getId()).stream()
+                .map(session -> new ChatSessionResponse(
+                        session.getId(),
+                        session.getTitle(),
+                        session.getCreatedAt()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns messages for a session owned by the authenticated user.
+     * Throws {@link ResourceNotFoundException} if the session is missing or belongs to someone else.
+     */
+    @Transactional(readOnly = true)
+    public List<ChatMessageResponse> getSessionMessages(String username, Long sessionId) {
+        User user = requireUser(username);
+        ChatSession session = chatSessionRepository.findByIdAndUserId(sessionId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Chat session not found or not owned by user: " + sessionId));
+
+        return chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(session.getId()).stream()
+                .map(message -> new ChatMessageResponse(
+                        message.getId(),
+                        message.getContent(),
+                        message.getRole(),
+                        message.getCreatedAt()))
+                .collect(Collectors.toList());
+    }
+
+    private User requireUser(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
     }
 
     private ChatSession resolveSession(User user, Long chatSessionId, String firstMessage) {

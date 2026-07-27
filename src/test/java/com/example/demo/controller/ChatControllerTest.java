@@ -1,10 +1,15 @@
 package com.example.demo.controller;
 
 import com.example.demo.config.SecurityConfig;
+import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.dto.ChatResponse;
+import com.example.demo.dto.ChatSessionResponse;
+import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.security.JwtAuthenticationFilter;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.ChatService;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +20,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -82,5 +88,56 @@ class ChatControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listSessions_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listSessions_withValidToken_returnsSessions() throws Exception {
+        Mockito.when(chatService.listSessions("testuser"))
+                .thenReturn(List.of(new ChatSessionResponse(
+                        3L, "Hello chat", LocalDateTime.of(2026, 1, 1, 10, 0))));
+
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(get("/api/chat/sessions")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(3))
+                .andExpect(jsonPath("$[0].title").value("Hello chat"));
+    }
+
+    @Test
+    void getSessionMessages_withValidToken_returnsMessages() throws Exception {
+        Mockito.when(chatService.getSessionMessages("testuser", 3L))
+                .thenReturn(List.of(
+                        new ChatMessageResponse(1L, "Hi", "user", LocalDateTime.of(2026, 1, 1, 10, 0)),
+                        new ChatMessageResponse(2L, "Hello", "ai", LocalDateTime.of(2026, 1, 1, 10, 1))));
+
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(get("/api/chat/sessions/3")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].content").value("Hi"))
+                .andExpect(jsonPath("$[0].role").value("user"))
+                .andExpect(jsonPath("$[1].content").value("Hello"))
+                .andExpect(jsonPath("$[1].role").value("ai"));
+    }
+
+    @Test
+    void getSessionMessages_whenNotOwned_returns404() throws Exception {
+        Mockito.when(chatService.getSessionMessages("testuser", 99L))
+                .thenThrow(new ResourceNotFoundException("Chat session not found or not owned by user: 99"));
+
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(get("/api/chat/sessions/99")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
     }
 }

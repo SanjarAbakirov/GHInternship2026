@@ -6,7 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.dto.ChatResponse;
+import com.example.demo.dto.ChatSessionResponse;
 import com.example.demo.exception.AiServiceException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.model.ChatMessage;
@@ -15,6 +17,7 @@ import com.example.demo.model.User;
 import com.example.demo.repository.ChatMessageRepository;
 import com.example.demo.repository.ChatSessionRepository;
 import com.example.demo.repository.UserRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -109,6 +112,58 @@ public class ChatServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> chatService.chat("testuser", "Hello", 99L));
+    }
+
+    @Test
+    public void listSessions_returnsSessionsOrderedByLastActivity() {
+        ChatSession first = new ChatSession("First", testUser);
+        first.setId(1L);
+        first.setCreatedAt(LocalDateTime.of(2026, 1, 1, 10, 0));
+        ChatSession second = new ChatSession("Second", testUser);
+        second.setId(2L);
+        second.setCreatedAt(LocalDateTime.of(2026, 1, 2, 10, 0));
+
+        when(chatSessionRepository.findByUserIdOrderByLastActivityDesc(1L))
+                .thenReturn(List.of(second, first));
+
+        List<ChatSessionResponse> sessions = chatService.listSessions("testuser");
+
+        assertEquals(2, sessions.size());
+        assertEquals(2L, sessions.get(0).getId());
+        assertEquals("Second", sessions.get(0).getTitle());
+        assertEquals(1L, sessions.get(1).getId());
+    }
+
+    @Test
+    public void getSessionMessages_returnsMessagesForOwnedSession() {
+        ChatSession session = new ChatSession("Owned", testUser);
+        session.setId(7L);
+        when(chatSessionRepository.findByIdAndUserId(7L, 1L)).thenReturn(Optional.of(session));
+
+        ChatMessage userMsg = new ChatMessage("Hi", ChatMessage.ROLE_USER, session);
+        userMsg.setId(100L);
+        userMsg.setCreatedAt(LocalDateTime.of(2026, 1, 1, 12, 0));
+        ChatMessage aiMsg = new ChatMessage("Hello", ChatMessage.ROLE_AI, session);
+        aiMsg.setId(101L);
+        aiMsg.setCreatedAt(LocalDateTime.of(2026, 1, 1, 12, 1));
+        when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(7L))
+                .thenReturn(List.of(userMsg, aiMsg));
+
+        List<ChatMessageResponse> messages = chatService.getSessionMessages("testuser", 7L);
+
+        assertEquals(2, messages.size());
+        assertEquals("Hi", messages.get(0).getContent());
+        assertEquals(ChatMessage.ROLE_USER, messages.get(0).getRole());
+        assertEquals("Hello", messages.get(1).getContent());
+        assertEquals(ChatMessage.ROLE_AI, messages.get(1).getRole());
+    }
+
+    @Test
+    public void getSessionMessages_throwsWhenSessionNotOwned() {
+        when(chatSessionRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> chatService.getSessionMessages("testuser", 99L));
     }
 
     @Test
