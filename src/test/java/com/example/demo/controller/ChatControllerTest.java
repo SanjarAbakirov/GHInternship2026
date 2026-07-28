@@ -140,4 +140,10 @@ class ChatControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void getSessionMessages_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions/3"))
+                .andExpect(status().isUnauthorized());
+    }
 }

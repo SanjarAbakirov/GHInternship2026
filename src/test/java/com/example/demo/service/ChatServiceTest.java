@@ -80,13 +80,21 @@ public class ChatServiceTest {
         assertEquals("Hello from AI", response.getReply());
         assertEquals(10L, response.getChatSessionId());
 
+        ArgumentCaptor<ChatSession> sessionCaptor = ArgumentCaptor.forClass(ChatSession.class);
+        verify(chatSessionRepository).save(sessionCaptor.capture());
+        ChatSession savedSession = sessionCaptor.getValue();
+        assertEquals("Hello", savedSession.getTitle());
+        assertEquals(testUser.getId(), savedSession.getUser().getId());
+
         ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
         verify(chatMessageRepository, Mockito.times(2)).save(messageCaptor.capture());
         List<ChatMessage> savedMessages = messageCaptor.getAllValues();
         assertEquals(ChatMessage.ROLE_USER, savedMessages.get(0).getRole());
         assertEquals("Hello", savedMessages.get(0).getContent());
+        assertEquals(10L, savedMessages.get(0).getSession().getId());
         assertEquals(ChatMessage.ROLE_AI, savedMessages.get(1).getRole());
         assertEquals("Hello from AI", savedMessages.get(1).getContent());
+        assertEquals(10L, savedMessages.get(1).getSession().getId());
     }
 
     @Test
@@ -103,7 +111,16 @@ public class ChatServiceTest {
         assertEquals(22L, response.getChatSessionId());
         assertEquals("Follow-up reply", response.getReply());
         verify(chatSessionRepository, Mockito.never()).save(any(ChatSession.class));
-        verify(chatMessageRepository, Mockito.times(2)).save(any(ChatMessage.class));
+
+        ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+        verify(chatMessageRepository, Mockito.times(2)).save(messageCaptor.capture());
+        List<ChatMessage> savedMessages = messageCaptor.getAllValues();
+        assertEquals("Next message", savedMessages.get(0).getContent());
+        assertEquals(ChatMessage.ROLE_USER, savedMessages.get(0).getRole());
+        assertEquals(existing, savedMessages.get(0).getSession());
+        assertEquals("Follow-up reply", savedMessages.get(1).getContent());
+        assertEquals(ChatMessage.ROLE_AI, savedMessages.get(1).getRole());
+        assertEquals(existing, savedMessages.get(1).getSession());
     }
 
     @Test
