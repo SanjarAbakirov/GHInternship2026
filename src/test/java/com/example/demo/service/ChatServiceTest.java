@@ -117,10 +117,10 @@ public class ChatServiceTest {
         List<ChatMessage> savedMessages = messageCaptor.getAllValues();
         assertEquals("Next message", savedMessages.get(0).getContent());
         assertEquals(ChatMessage.ROLE_USER, savedMessages.get(0).getRole());
-        assertEquals(existing, savedMessages.get(0).getSession());
+        assertEquals(existing.getId(), savedMessages.get(0).getSession().getId());
         assertEquals("Follow-up reply", savedMessages.get(1).getContent());
         assertEquals(ChatMessage.ROLE_AI, savedMessages.get(1).getRole());
-        assertEquals(existing, savedMessages.get(1).getSession());
+        assertEquals(existing.getId(), savedMessages.get(1).getSession().getId());
     }
 
     @Test
