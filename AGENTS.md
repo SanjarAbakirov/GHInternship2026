@@ -17,8 +17,12 @@
     - Реализованы Unit-тесты для `ChatController` (`@WithMockUser`, `MockMvc`) и `ChatService` (внедрен `RestTemplate`, использован `Mockito` для тестов без сети).
   - Упрощен `API Key Management` для 100% соответствия заданию Week 6 (игнорируется `application.properties`, упрощен `@Value`).
   - Переписан компонент чата на фронтенде (сохранение динамической истории сообщений).
-  - Добавлен `Chat.test.js` с моками `axios` и тестами UI компонентов React.
+  - Реализованы сущности `ChatSession` и `ChatMessage`, репозитории `ChatSessionRepository` и `ChatMessageRepository`.
+  - В `ChatService` и `ChatController` добавлены методы сохранения истории сообщений и получения списка сессий пользователя (`GET /api/chat/sessions`, `GET /api/chat/sessions/{sessionId}`).
+  - Для устранения ошибки подключения к PostgreSQL (`localhost:5432 Connection Refused`) в `docker-compose.yml` подготовлено окружение базы данных, скачан инсталлятор `Docker Desktop` для запуска контейнера `postgres:16-alpine`.
+  - Все юнит и интеграционные тесты бэкенда (`./mvnw test`, 51 тест) и фронтенда (`npm test`, 20 тестов) проходят успешно.
 ## Планы (Next Steps)
-1. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
-2. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
-3. Дальнейшее расширение функционала (по запросу).
+1. Запуск PostgreSQL контейнера через Docker Desktop (`docker compose up -d`).
+2. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
+3. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
+
