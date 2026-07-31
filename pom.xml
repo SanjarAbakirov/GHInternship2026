@@ -42,11 +42,11 @@
         <scope>runtime</scope>
     </dependency>
 
-    <!-- H2 kept for unit/integration tests only -->
+    <!-- H2 available at runtime for fallback/local mode without Postgres -->
     <dependency>
         <groupId>com.h2database</groupId>
         <artifactId>h2</artifactId>
-        <scope>test</scope>
+        <scope>runtime</scope>
     </dependency>
 
     <dependency>

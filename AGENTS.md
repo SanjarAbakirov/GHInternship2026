@@ -19,10 +19,12 @@
   - Переписан компонент чата на фронтенде (сохранение динамической истории сообщений).
   - Реализованы сущности `ChatSession` и `ChatMessage`, репозитории `ChatSessionRepository` и `ChatMessageRepository`.
   - В `ChatService` и `ChatController` добавлены методы сохранения истории сообщений и получения списка сессий пользователя (`GET /api/chat/sessions`, `GET /api/chat/sessions/{sessionId}`).
-  - Для устранения ошибки подключения к PostgreSQL (`localhost:5432 Connection Refused`) в `docker-compose.yml` подготовлено окружение базы данных, скачан инсталлятор `Docker Desktop` для запуска контейнера `postgres:16-alpine`.
+  - Создана и настроена конфигурация `application-h2.properties` (H2 fallback профиль по умолчанию) для гарантированного локального запуска приложения без зависимости от Docker/PostgreSQL.
+  - При необходимости запуск приложения с PostgreSQL по-прежнему доступен командой `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`.
   - Все юнит и интеграционные тесты бэкенда (`./mvnw test`, 51 тест) и фронтенда (`npm test`, 20 тестов) проходят успешно.
 ## Планы (Next Steps)
-1. Запуск PostgreSQL контейнера через Docker Desktop (`docker compose up -d`).
+1. Запуск PostgreSQL контейнера через Docker Desktop при необходимости на стороне разработчика.
 2. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
 3. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
+
 
