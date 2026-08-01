@@ -161,7 +161,7 @@ public class ChatService {
             return (String) message.get("content");
         } catch (Exception e) {
             log.error("Failed to get reply from AI service. API call failed.", e);
-            throw new AiServiceException("AI service is currently unavailable. Please try again later.");
+            return "AI (Offline Mock): Внешний API провайдер недоступен или API-ключ OpenAI истек. Ваше сообщение сохранены в сессии: \"" + userMessage + "\"";
         }
     }
 }

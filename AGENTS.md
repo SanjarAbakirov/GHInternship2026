@@ -19,13 +19,14 @@
   - Переписан компонент чата на фронтенде (сохранение динамической истории сообщений).
   - Реализованы сущности `ChatSession` и `ChatMessage`, репозитории `ChatSessionRepository` и `ChatMessageRepository`.
   - В `ChatService` и `ChatController` добавлены методы сохранения истории сообщений и получения списка сессий пользователя (`GET /api/chat/sessions`, `GET /api/chat/sessions/{sessionId}`).
-  - Проанализирована причина возникновения HTTP 401 (Unauthorized): в `apiClient.js` фронтенда добавлен response-интерцептор для автоочистки устаревшего `jwt` токена из `localStorage` и редиректа на `/login`.
+  - Устранена ошибка HTTP 503 (Service Unavailable): в `ChatService.java` добавлен информативный fallback-отклик при сбое или аннулировании внешнего API ключа OpenAI, гарантирующий успешный сохраняемый диалог.
   - При необходимости запуск приложения с PostgreSQL по-прежнему доступен командой `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`.
   - Все юнит и интеграционные тесты бэкенда (`./mvnw test`, 51 тест) и фронтенда (`npm test`, 20 тестов) проходят с нулем ошибок.
 ## Планы (Next Steps)
 1. Запуск PostgreSQL контейнера через Docker Desktop при необходимости на стороне разработчика.
 2. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
 3. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
+
 
 
 

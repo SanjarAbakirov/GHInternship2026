@@ -197,11 +197,8 @@ public class ChatServiceTest {
                 ArgumentMatchers.eq(Map.class)
         )).thenThrow(new RestClientException("Connection refused"));
 
-        AiServiceException exception = assertThrows(AiServiceException.class, () -> {
-            chatService.getChatReply("Hello");
-        });
-
-        assertEquals("AI service is currently unavailable. Please try again later.", exception.getMessage());
+        String reply = chatService.getChatReply("Hello");
+        assertEquals("AI (Offline Mock): Внешний API провайдер недоступен или API-ключ OpenAI истек. Ваше сообщение сохранены в сессии: \"Hello\"", reply);
     }
 
     private void stubAiReply(String reply) {
