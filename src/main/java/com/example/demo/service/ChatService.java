@@ -144,8 +144,12 @@ public class ChatService {
     public String getChatReply(String userMessage) {
         try {
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(apiKey);
+            if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.contains("placeholder")) {
+                headers.setBearerAuth(apiKey.trim());
+            }
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("HTTP-Referer", "http://localhost:3000");
+            headers.set("X-Title", "GHInternship AI Chat");
 
             Map<String, Object> body = Map.of(
                     "model", apiModel,

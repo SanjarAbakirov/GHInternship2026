@@ -19,13 +19,14 @@
   - Переписан компонент чата на фронтенде (сохранение динамической истории сообщений).
   - Реализованы сущности `ChatSession` и `ChatMessage`, репозитории `ChatSessionRepository` и `ChatMessageRepository`.
   - В `ChatService` и `ChatController` добавлены методы сохранения истории сообщений и получения списка сессий пользователя (`GET /api/chat/sessions`, `GET /api/chat/sessions/{sessionId}`).
-  - Оптимизировано логирование в `ChatService.java`: заменен уровень с `log.error` на `log.warn` при обработке сетевых фолбэков, исключая пугающие красные трейсы при запуске тестов `./mvnw test`.
+  - Реализован Вариант 3: бэкенд переведен на OpenAI-совместимый эндпоинт `OpenRouter` (`https://openrouter.ai/api/v1/chat/completions`) с поддержкой бесплатных моделей нейросетей (`deepseek/deepseek-r1:free`).
   - При необходимости запуск приложения с PostgreSQL по-прежнему доступен командой `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`.
   - Все юнит и интеграционные тесты бэкенда (`./mvnw test`, 51 тест) и фронтенда (`npm test`, 20 тестов) проходят с нулем ошибок.
 ## Планы (Next Steps)
 1. Запуск PostgreSQL контейнера через Docker Desktop при необходимости на стороне разработчика.
 2. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
 3. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
+
 
 
 
