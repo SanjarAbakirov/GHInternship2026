@@ -160,7 +160,7 @@ public class ChatService {
             Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
             return (String) message.get("content");
         } catch (Exception e) {
-            log.error("Failed to get reply from AI service. API call failed.", e);
+            log.warn("AI service call unavailable: {}. Returning fallback response.", e.getMessage());
             return "AI (Offline Mock): Внешний API провайдер недоступен или API-ключ OpenAI истек. Ваше сообщение сохранены в сессии: \"" + userMessage + "\"";
         }
     }
