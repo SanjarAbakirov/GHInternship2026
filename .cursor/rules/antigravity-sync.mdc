@@ -1,0 +1,20 @@
+---
+description: Always sync with Antigravity handoff before and after work
+alwaysApply: true
+---
+
+# Antigravity sync rule
+
+Before starting any non-trivial task in this repository:
+
+1. Read `ANTIGRAVITY.md` first (handoff between Cursor and Antigravity).
+2. Read `AGENTS.md` for project context.
+3. If Antigravity section shows `in_progress` or conflicting WIP, avoid overlapping edits unless the user explicitly asks to take over.
+4. Do not invent Antigravity work — only trust what is written in `ANTIGRAVITY.md`.
+
+After finishing significant work (features, merges, config/provider changes, test status changes):
+
+1. Update `ANTIGRAVITY.md`:
+   - Cursor section (date, branch, done, files, status)
+   - Next Steps / blockers if needed
+2. Keep secrets out of markdown (`application-local.properties`, `.env`, API keys).
