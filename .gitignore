@@ -13,7 +13,7 @@ application-local.properties
 *.pid
 *.spring
 spring-shell.log
-node_modules/ss   →  node_modules/
+node_modules/
 
 ### STS ###
 .apt_generated
@@ -120,7 +120,6 @@ dependency-reduced-pow.xml
 
 ### Docker ###
 docker-compose.override.yml
-.dockerignore
 
 ### Nide.js (for frontend) ###
 node_modules/
@@ -128,6 +127,3 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-## .env
-.env.example
