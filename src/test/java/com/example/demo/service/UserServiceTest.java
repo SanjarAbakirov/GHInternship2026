@@ -1,5 +1,7 @@
 package com.example.demo.service;
 
+import com.example.demo.exception.AuthenticationException;
+import com.example.demo.exception.DuplicateUserException;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +56,7 @@ class UserServiceTest {
     void registerUser_UsernameAlreadyExists_ThrowsException() {
         when(userRepository.existsByUsername("testuser")).thenReturn(true);
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        DuplicateUserException exception = assertThrows(DuplicateUserException.class, () -> {
             userService.registerUser("testuser", "test@example.com", "password123");
         });
 
@@ -67,7 +69,7 @@ class UserServiceTest {
         when(userRepository.existsByUsername("testuser")).thenReturn(false);
         when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        DuplicateUserException exception = assertThrows(DuplicateUserException.class, () -> {
             userService.registerUser("testuser", "test@example.com", "password123");
         });
 
@@ -89,11 +91,11 @@ class UserServiceTest {
     void authenticateUser_UserNotFound_ThrowsException() {
         when(userRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        AuthenticationException exception = assertThrows(AuthenticationException.class, () -> {
             userService.authenticateUser("nonexistent", "password123");
         });
 
-        assertEquals("User not found!", exception.getMessage());
+        assertEquals("Invalid username or password", exception.getMessage());
     }
 
     @Test
@@ -101,10 +103,10 @@ class UserServiceTest {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("wrongpassword", "encodedPassword")).thenReturn(false);
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        AuthenticationException exception = assertThrows(AuthenticationException.class, () -> {
             userService.authenticateUser("testuser", "wrongpassword");
         });
 
-        assertEquals("Invalid password!", exception.getMessage());
+        assertEquals("Invalid username or password", exception.getMessage());
     }
 }

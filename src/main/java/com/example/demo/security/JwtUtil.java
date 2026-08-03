@@ -13,6 +13,11 @@ public class JwtUtil {
     private final long expirationMs = 3600000; // 1 час
 
     public JwtUtil(@Value("${jwt.secret}") String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "jwt.secret is not set. Provide JWT_SECRET as an env var or set jwt.secret "
+                            + "in application-local.properties (see application.properties.example).");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 

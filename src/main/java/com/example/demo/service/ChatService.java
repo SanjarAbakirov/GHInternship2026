@@ -56,8 +56,13 @@ public class ChatService {
     /**
      * Persists the conversation and returns the AI reply with the session id.
      * Creates a new {@link ChatSession} when {@code chatSessionId} is null.
+     *
+     * Intentionally NOT wrapped in a single {@code @Transactional}: the AI HTTP
+     * call in the middle can take seconds, and holding a DB transaction (and its
+     * pooled connection) open for that long would starve the connection pool.
+     * Each repository call below is already transactional on its own via Spring
+     * Data JPA.
      */
-    @Transactional
     public ChatResponse chat(String username, String userMessage, Long chatSessionId) {
         User user = requireUser(username);
 

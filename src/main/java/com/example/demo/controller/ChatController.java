@@ -35,9 +35,10 @@ public class ChatController {
             @Valid @RequestBody ChatRequest request,
             Authentication authentication) {
         String username = authentication.getName();
-        log.info("Received chat message from {}: {}", username, request.getMessage());
+        log.info("Received chat message from {} (session={}, length={})",
+                username, request.getChatSessionId(), request.getMessage().length());
         ChatResponse response = chatService.chat(username, request.getMessage(), request.getChatSessionId());
-        log.debug("AI reply for session {}: {}", response.getChatSessionId(), response.getReply());
+        log.debug("AI reply generated for session {}", response.getChatSessionId());
         return ResponseEntity.ok(response);
     }
 
