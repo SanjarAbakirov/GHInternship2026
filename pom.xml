@@ -5,7 +5,7 @@
 <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.4.1</version>
+    <version>3.5.16</version>
     <relativePath/>
 </parent>
 
@@ -17,6 +17,9 @@
     <java.version>21</java.version>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
+    <!-- Patch-level bumps over the versions pinned by the Spring Boot 3.5.16 BOM. -->
+    <h2.version>2.4.240</h2.version>
+    <postgresql.version>42.7.13</postgresql.version>
 </properties>
 
 <dependencies>
@@ -35,10 +38,21 @@
         <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
 
-    <!-- PostgreSQL JDBC driver (version managed by Spring Boot 3.4.1 parent BOM) -->
+    <!-- PostgreSQL JDBC driver (version managed by the Spring Boot parent BOM) -->
     <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+    <!-- Flyway: versioned schema migrations for dev/prod (Postgres). Disabled on h2/test profiles. -->
+    <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-database-postgresql</artifactId>
         <scope>runtime</scope>
     </dependency>
 
@@ -64,18 +78,18 @@
     <dependency>
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-api</artifactId>
-        <version>0.12.6</version>
+        <version>0.13.0</version>
     </dependency>
     <dependency>
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-impl</artifactId>
-        <version>0.12.6</version>
+        <version>0.13.0</version>
         <scope>runtime</scope>
     </dependency>
     <dependency>
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-jackson</artifactId>
-        <version>0.12.6</version>
+        <version>0.13.0</version>
         <scope>runtime</scope>
     </dependency>
 

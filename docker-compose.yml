@@ -1,4 +1,4 @@
-# Local PostgreSQL for Week 7+. Credentials come from .env (see .env.example).
+# Local PostgreSQL + app for Week 7+. Credentials come from .env (see .env.example).
 # Do not commit real passwords — copy .env.example to .env and customize.
 services:
   postgres:
@@ -18,6 +18,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  app:
+    build: .
+    container_name: internship-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_API_URL: ${OPENAI_API_URL:-}
+      OPENAI_API_MODEL: ${OPENAI_API_MODEL:-}
 
 volumes:
   postgres_data:
