@@ -1,9 +1,9 @@
 package com.example.demo.controller;
 
 import com.example.demo.config.SecurityConfig;
-import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.dto.ChatResponse;
-import com.example.demo.dto.ChatSessionResponse;
+import com.example.demo.dto.ConversationResponse;
+import com.example.demo.dto.MessageResponse;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.security.JwtAuthenticationFilter;
 import com.example.demo.security.JwtUtil;
@@ -99,8 +99,8 @@ class ChatControllerTest {
     @Test
     void listSessions_withValidToken_returnsSessions() throws Exception {
         Mockito.when(chatService.listSessions("testuser"))
-                .thenReturn(List.of(new ChatSessionResponse(
-                        3L, "Hello chat", LocalDateTime.of(2026, 1, 1, 10, 0))));
+                .thenReturn(List.of(new ConversationResponse(
+                        3L, "Hello chat", "gpt-3.5-turbo", LocalDateTime.of(2026, 1, 1, 10, 0))));
 
         String token = jwtUtil.generateToken("testuser");
 
@@ -115,8 +115,8 @@ class ChatControllerTest {
     void getSessionMessages_withValidToken_returnsMessages() throws Exception {
         Mockito.when(chatService.getSessionMessages("testuser", 3L))
                 .thenReturn(List.of(
-                        new ChatMessageResponse(1L, "Hi", "user", LocalDateTime.of(2026, 1, 1, 10, 0)),
-                        new ChatMessageResponse(2L, "Hello", "ai", LocalDateTime.of(2026, 1, 1, 10, 1))));
+                        new MessageResponse(1L, "Hi", "user", LocalDateTime.of(2026, 1, 1, 10, 0)),
+                        new MessageResponse(2L, "Hello", "ai", LocalDateTime.of(2026, 1, 1, 10, 1))));
 
         String token = jwtUtil.generateToken("testuser");
 
@@ -132,7 +132,7 @@ class ChatControllerTest {
     @Test
     void getSessionMessages_whenNotOwned_returns404() throws Exception {
         Mockito.when(chatService.getSessionMessages("testuser", 99L))
-                .thenThrow(new ResourceNotFoundException("Chat session not found or not owned by user: 99"));
+                .thenThrow(new ResourceNotFoundException("Conversation not found or not owned by user: 99"));
 
         String token = jwtUtil.generateToken("testuser");
 

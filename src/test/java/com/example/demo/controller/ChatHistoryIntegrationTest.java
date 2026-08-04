@@ -4,11 +4,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.demo.model.ChatMessage;
-import com.example.demo.model.ChatSession;
+import com.example.demo.model.Conversation;
+import com.example.demo.model.Message;
 import com.example.demo.model.User;
-import com.example.demo.repository.ChatMessageRepository;
-import com.example.demo.repository.ChatSessionRepository;
+import com.example.demo.repository.ConversationRepository;
+import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,15 +40,15 @@ class ChatHistoryIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
-    private ChatSessionRepository chatSessionRepository;
+    private ConversationRepository conversationRepository;
 
     @Autowired
-    private ChatMessageRepository chatMessageRepository;
+    private MessageRepository messageRepository;
 
     private User owner;
     private User otherUser;
-    private ChatSession ownerSession;
-    private ChatSession otherSession;
+    private Conversation ownerConversation;
+    private Conversation otherConversation;
     private String ownerToken;
 
     @BeforeEach
@@ -56,20 +56,20 @@ class ChatHistoryIntegrationTest {
         owner = userRepository.save(new User("historyuser", "history@example.com", "password"));
         otherUser = userRepository.save(new User("stranger", "stranger@example.com", "password"));
 
-        ownerSession = new ChatSession("Owner chat", owner);
-        ownerSession.addMessage(new ChatMessage("Hi there", ChatMessage.ROLE_USER));
-        ownerSession.addMessage(new ChatMessage("Hello back", ChatMessage.ROLE_AI));
-        ownerSession = chatSessionRepository.save(ownerSession);
+        ownerConversation = new Conversation("Owner chat", owner);
+        ownerConversation.addMessage(new Message("Hi there", Message.ROLE_USER));
+        ownerConversation.addMessage(new Message("Hello back", Message.ROLE_AI));
+        ownerConversation = conversationRepository.save(ownerConversation);
 
-        ChatSession secondOwnerSession = chatSessionRepository.save(new ChatSession("Second chat", owner));
+        Conversation secondOwnerConversation = conversationRepository.save(new Conversation("Second chat", owner));
 
-        otherSession = new ChatSession("Private chat", otherUser);
-        otherSession.addMessage(new ChatMessage("secret", ChatMessage.ROLE_USER));
-        otherSession = chatSessionRepository.save(otherSession);
+        otherConversation = new Conversation("Private chat", otherUser);
+        otherConversation.addMessage(new Message("secret", Message.ROLE_USER));
+        otherConversation = conversationRepository.save(otherConversation);
 
-        // touch second session so activity ordering is deterministic enough for presence checks
-        chatMessageRepository.save(
-                new ChatMessage("follow-up", ChatMessage.ROLE_USER, secondOwnerSession));
+        // touch second conversation so activity ordering is deterministic enough for presence checks
+        messageRepository.save(
+                new Message("follow-up", Message.ROLE_USER, secondOwnerConversation));
 
         ownerToken = jwtUtil.generateToken(owner.getUsername());
     }
@@ -93,7 +93,7 @@ class ChatHistoryIntegrationTest {
 
     @Test
     void getSessionMessages_authenticated_returnsMessagesForOwnedSession() throws Exception {
-        mockMvc.perform(get("/api/chat/sessions/{sessionId}", ownerSession.getId())
+        mockMvc.perform(get("/api/chat/sessions/{sessionId}", ownerConversation.getId())
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
@@ -105,13 +105,13 @@ class ChatHistoryIntegrationTest {
 
     @Test
     void getSessionMessages_unauthenticated_returns401() throws Exception {
-        mockMvc.perform(get("/api/chat/sessions/{sessionId}", ownerSession.getId()))
+        mockMvc.perform(get("/api/chat/sessions/{sessionId}", ownerConversation.getId()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void getSessionMessages_otherUsersSession_returns404() throws Exception {
-        mockMvc.perform(get("/api/chat/sessions/{sessionId}", otherSession.getId())
+        mockMvc.perform(get("/api/chat/sessions/{sessionId}", otherConversation.getId())
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isNotFound());
     }
