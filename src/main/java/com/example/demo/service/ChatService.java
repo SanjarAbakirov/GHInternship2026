@@ -79,6 +79,10 @@ public class ChatService {
         messageRepository.save(aiMsg);
         log.info("Saved AI message for conversation {}", conversation.getId());
 
+        // addMessage() above only bumps updatedAt in memory; persist it so
+        // findByUserIdOrderByUpdatedAtDesc reflects this conversation's new activity.
+        conversationRepository.save(conversation);
+
         return new ChatResponse(aiReply, conversation.getId());
     }
 
@@ -88,7 +92,7 @@ public class ChatService {
     @Transactional(readOnly = true)
     public List<ConversationResponse> listSessions(String username) {
         User user = requireUser(username);
-        return conversationRepository.findByUserIdOrderByLastActivityDesc(user.getId()).stream()
+        return conversationRepository.findByUserIdOrderByUpdatedAtDesc(user.getId()).stream()
                 .map(conversation -> new ConversationResponse(
                         conversation.getId(),
                         conversation.getTitle(),

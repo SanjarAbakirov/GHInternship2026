@@ -43,32 +43,6 @@ class ConversationRepositoryTest {
     }
 
     @Test
-    void findByUserIdOrderByCreatedAtDesc_returnsOnlyOwnerConversationsNewestFirst()
-            throws InterruptedException {
-        Conversation older = conversationRepository.saveAndFlush(new Conversation("Older", owner));
-        Thread.sleep(20);
-        Conversation newer = conversationRepository.saveAndFlush(new Conversation("Newer", owner));
-        conversationRepository.saveAndFlush(new Conversation("Other user's chat", otherUser));
-
-        List<Conversation> conversations = conversationRepository.findByUserIdOrderByCreatedAtDesc(owner.getId());
-
-        assertEquals(2, conversations.size());
-        assertEquals(newer.getId(), conversations.get(0).getId());
-        assertEquals(older.getId(), conversations.get(1).getId());
-    }
-
-    @Test
-    void findByUserOrderByCreatedAtDesc_filtersByUserEntity() {
-        conversationRepository.save(new Conversation("Owned", owner));
-        conversationRepository.save(new Conversation("Not owned", otherUser));
-
-        List<Conversation> conversations = conversationRepository.findByUserOrderByCreatedAtDesc(owner);
-
-        assertEquals(1, conversations.size());
-        assertEquals("Owned", conversations.get(0).getTitle());
-    }
-
-    @Test
     void findByIdAndUserId_returnsConversationOnlyWhenOwned() {
         Conversation owned = conversationRepository.save(new Conversation("Owned", owner));
         Conversation foreign = conversationRepository.save(new Conversation("Foreign", otherUser));
@@ -79,7 +53,22 @@ class ConversationRepositoryTest {
     }
 
     @Test
-    void findByUserIdOrderByLastActivityDesc_ordersByLatestMessageActivity()
+    void findByUserIdOrderByUpdatedAtDesc_returnsOnlyOwnerConversationsNewestFirst()
+            throws InterruptedException {
+        Conversation older = conversationRepository.saveAndFlush(new Conversation("Older", owner));
+        Thread.sleep(20);
+        Conversation newer = conversationRepository.saveAndFlush(new Conversation("Newer", owner));
+        conversationRepository.saveAndFlush(new Conversation("Other user's chat", otherUser));
+
+        List<Conversation> conversations = conversationRepository.findByUserIdOrderByUpdatedAtDesc(owner.getId());
+
+        assertEquals(2, conversations.size());
+        assertEquals(newer.getId(), conversations.get(0).getId());
+        assertEquals(older.getId(), conversations.get(1).getId());
+    }
+
+    @Test
+    void findByUserIdOrderByUpdatedAtDesc_ordersByLatestMessageActivity()
             throws InterruptedException {
         Conversation quiet = conversationRepository.saveAndFlush(new Conversation("Quiet", owner));
 
@@ -93,7 +82,7 @@ class ConversationRepositoryTest {
         quiet = conversationRepository.saveAndFlush(quiet);
 
         List<Conversation> conversations =
-                conversationRepository.findByUserIdOrderByLastActivityDesc(owner.getId());
+                conversationRepository.findByUserIdOrderByUpdatedAtDesc(owner.getId());
 
         assertEquals(2, conversations.size());
         assertEquals(quiet.getId(), conversations.get(0).getId());

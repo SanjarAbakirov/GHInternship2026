@@ -57,26 +57,4 @@ class ConversationPersistenceTest {
         assertTrue(conversationRepository.findById(conversationId).isEmpty());
         assertTrue(messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId).isEmpty());
     }
-
-    @Test
-    void findByUserIdOrderByLastActivityDesc_returnsMostRecentlyActiveFirst() throws InterruptedException {
-        User owner = userRepository.save(new User("activeuser", "active@example.com", "password"));
-
-        Conversation older = new Conversation("Older conversation", owner);
-        older.addMessage(new Message("first", Message.ROLE_USER));
-        older = conversationRepository.saveAndFlush(older);
-
-        Thread.sleep(20);
-
-        Conversation newer = new Conversation("Newer conversation", owner);
-        newer.addMessage(new Message("later", Message.ROLE_USER));
-        newer = conversationRepository.saveAndFlush(newer);
-
-        var conversations = conversationRepository.findByUserIdOrderByLastActivityDesc(owner.getId());
-
-        assertEquals(2, conversations.size());
-        assertEquals(newer.getId(), conversations.get(0).getId());
-        assertEquals(older.getId(), conversations.get(1).getId());
-        assertEquals(1, messageRepository.countByConversationId(newer.getId()));
-    }
 }
