@@ -79,8 +79,10 @@ public class ChatServiceTest {
         assertEquals("Hello from AI", response.getReply());
         assertEquals(10L, response.getChatSessionId());
 
+        // Saved once when the conversation is created, and again at the end of chat()
+        // to persist the updatedAt bump from addMessage().
         ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
-        verify(conversationRepository).save(conversationCaptor.capture());
+        verify(conversationRepository, Mockito.times(2)).save(conversationCaptor.capture());
         Conversation savedConversation = conversationCaptor.getValue();
         assertEquals("Hello", savedConversation.getTitle());
         assertEquals(testUser.getId(), savedConversation.getUser().getId());
@@ -104,13 +106,15 @@ public class ChatServiceTest {
         Conversation existing = new Conversation("Existing", testUser);
         existing.setId(22L);
         when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
+        when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ChatResponse response = chatService.chat("testuser", "Next message", 22L);
 
         assertEquals(22L, response.getChatSessionId());
         assertEquals("Follow-up reply", response.getReply());
-        verify(conversationRepository, Mockito.never()).save(any(Conversation.class));
+        // No new conversation is created, but it's still saved once to persist the updatedAt bump.
+        verify(conversationRepository, Mockito.times(1)).save(existing);
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(messageRepository, Mockito.times(2)).save(messageCaptor.capture());
@@ -140,7 +144,7 @@ public class ChatServiceTest {
         second.setId(2L);
         second.setCreatedAt(LocalDateTime.of(2026, 1, 2, 10, 0));
 
-        when(conversationRepository.findByUserIdOrderByLastActivityDesc(1L))
+        when(conversationRepository.findByUserIdOrderByUpdatedAtDesc(1L))
                 .thenReturn(List.of(second, first));
 
         List<ConversationResponse> sessions = chatService.listSessions("testuser");

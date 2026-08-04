@@ -42,7 +42,6 @@ class MessageRepositoryTest {
         assertEquals("Hello", found.getContent());
         assertEquals(Message.ROLE_USER, found.getRole());
         assertEquals(conversation.getId(), found.getConversation().getId());
-        assertEquals(1, messageRepository.countByConversationId(conversation.getId()));
     }
 
     @Test
@@ -65,24 +64,13 @@ class MessageRepositoryTest {
     }
 
     @Test
-    void findByConversationOrderByCreatedAtAsc_returnsMessagesForConversationEntity() {
-        messageRepository.save(new Message("via entity", Message.ROLE_USER, conversation));
-
-        List<Message> messages = messageRepository.findByConversationOrderByCreatedAtAsc(conversation);
-
-        assertEquals(1, messages.size());
-        assertEquals("via entity", messages.get(0).getContent());
-    }
-
-    @Test
     void deleteByConversationId_removesAllMessagesForConversation() {
         messageRepository.save(new Message("one", Message.ROLE_USER, conversation));
         messageRepository.save(new Message("two", Message.ROLE_AI, conversation));
-        assertEquals(2, messageRepository.countByConversationId(conversation.getId()));
+        assertEquals(2, messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()).size());
 
         messageRepository.deleteByConversationId(conversation.getId());
 
-        assertEquals(0, messageRepository.countByConversationId(conversation.getId()));
         assertTrue(messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()).isEmpty());
     }
 }
