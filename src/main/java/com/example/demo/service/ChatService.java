@@ -1,15 +1,14 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.dto.ChatResponse;
-import com.example.demo.dto.ChatSessionResponse;
-import com.example.demo.exception.AiServiceException;
+import com.example.demo.dto.ConversationResponse;
+import com.example.demo.dto.MessageResponse;
 import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.model.ChatMessage;
-import com.example.demo.model.ChatSession;
+import com.example.demo.model.Conversation;
+import com.example.demo.model.Message;
 import com.example.demo.model.User;
-import com.example.demo.repository.ChatMessageRepository;
-import com.example.demo.repository.ChatSessionRepository;
+import com.example.demo.repository.ConversationRepository;
+import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
@@ -39,23 +38,23 @@ public class ChatService {
 
     private final RestTemplate restTemplate;
     private final UserRepository userRepository;
-    private final ChatSessionRepository chatSessionRepository;
-    private final ChatMessageRepository chatMessageRepository;
+    private final ConversationRepository conversationRepository;
+    private final MessageRepository messageRepository;
 
     public ChatService(
             RestTemplate restTemplate,
             UserRepository userRepository,
-            ChatSessionRepository chatSessionRepository,
-            ChatMessageRepository chatMessageRepository) {
+            ConversationRepository conversationRepository,
+            MessageRepository messageRepository) {
         this.restTemplate = restTemplate;
         this.userRepository = userRepository;
-        this.chatSessionRepository = chatSessionRepository;
-        this.chatMessageRepository = chatMessageRepository;
+        this.conversationRepository = conversationRepository;
+        this.messageRepository = messageRepository;
     }
 
     /**
-     * Persists the conversation and returns the AI reply with the session id.
-     * Creates a new {@link ChatSession} when {@code chatSessionId} is null.
+     * Persists the conversation and returns the AI reply with the conversation id.
+     * Creates a new {@link Conversation} when {@code conversationId} is null.
      *
      * Intentionally NOT wrapped in a single {@code @Transactional}: the AI HTTP
      * call in the middle can take seconds, and holding a DB transaction (and its
@@ -63,53 +62,54 @@ public class ChatService {
      * Each repository call below is already transactional on its own via Spring
      * Data JPA.
      */
-    public ChatResponse chat(String username, String userMessage, Long chatSessionId) {
+    public ChatResponse chat(String username, String userMessage, Long conversationId) {
         User user = requireUser(username);
 
-        ChatSession session = resolveSession(user, chatSessionId, userMessage);
+        Conversation conversation = resolveConversation(user, conversationId, userMessage);
 
-        ChatMessage userChatMessage = new ChatMessage(userMessage, ChatMessage.ROLE_USER, session);
-        session.addMessage(userChatMessage);
-        chatMessageRepository.save(userChatMessage);
-        log.info("Saved user message for session {}", session.getId());
+        Message userMsg = new Message(userMessage, Message.ROLE_USER, conversation);
+        conversation.addMessage(userMsg);
+        messageRepository.save(userMsg);
+        log.info("Saved user message for conversation {}", conversation.getId());
 
-        String aiReply = getChatReply(userMessage);
+        String aiReply = getChatReply(userMessage, conversation.getModelName());
 
-        ChatMessage aiChatMessage = new ChatMessage(aiReply, ChatMessage.ROLE_AI, session);
-        session.addMessage(aiChatMessage);
-        chatMessageRepository.save(aiChatMessage);
-        log.info("Saved AI message for session {}", session.getId());
+        Message aiMsg = new Message(aiReply, Message.ROLE_AI, conversation);
+        conversation.addMessage(aiMsg);
+        messageRepository.save(aiMsg);
+        log.info("Saved AI message for conversation {}", conversation.getId());
 
-        return new ChatResponse(aiReply, session.getId());
+        return new ChatResponse(aiReply, conversation.getId());
     }
 
     /**
-     * Returns all chat sessions for the authenticated user, ordered by last activity.
+     * Returns all conversations for the authenticated user, ordered by last activity.
      */
     @Transactional(readOnly = true)
-    public List<ChatSessionResponse> listSessions(String username) {
+    public List<ConversationResponse> listSessions(String username) {
         User user = requireUser(username);
-        return chatSessionRepository.findByUserIdOrderByLastActivityDesc(user.getId()).stream()
-                .map(session -> new ChatSessionResponse(
-                        session.getId(),
-                        session.getTitle(),
-                        session.getCreatedAt()))
+        return conversationRepository.findByUserIdOrderByLastActivityDesc(user.getId()).stream()
+                .map(conversation -> new ConversationResponse(
+                        conversation.getId(),
+                        conversation.getTitle(),
+                        conversation.getModelName(),
+                        conversation.getCreatedAt()))
                 .collect(Collectors.toList());
     }
 
     /**
-     * Returns messages for a session owned by the authenticated user.
-     * Throws {@link ResourceNotFoundException} if the session is missing or belongs to someone else.
+     * Returns messages for a conversation owned by the authenticated user.
+     * Throws {@link ResourceNotFoundException} if the conversation is missing or belongs to someone else.
      */
     @Transactional(readOnly = true)
-    public List<ChatMessageResponse> getSessionMessages(String username, Long sessionId) {
+    public List<MessageResponse> getSessionMessages(String username, Long conversationId) {
         User user = requireUser(username);
-        ChatSession session = chatSessionRepository.findByIdAndUserId(sessionId, user.getId())
+        Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Chat session not found or not owned by user: " + sessionId));
+                        "Conversation not found or not owned by user: " + conversationId));
 
-        return chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(session.getId()).stream()
-                .map(message -> new ChatMessageResponse(
+        return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()).stream()
+                .map(message -> new MessageResponse(
                         message.getId(),
                         message.getContent(),
                         message.getRole(),
@@ -122,17 +122,17 @@ public class ChatService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
     }
 
-    private ChatSession resolveSession(User user, Long chatSessionId, String firstMessage) {
-        if (chatSessionId == null) {
+    private Conversation resolveConversation(User user, Long conversationId, String firstMessage) {
+        if (conversationId == null) {
             String title = buildTitleFromMessage(firstMessage);
-            ChatSession created = chatSessionRepository.save(new ChatSession(title, user));
-            log.info("Created chat session {} for user {}", created.getId(), user.getUsername());
+            Conversation created = conversationRepository.save(new Conversation(title, user, apiModel));
+            log.info("Created conversation {} for user {}", created.getId(), user.getUsername());
             return created;
         }
 
-        return chatSessionRepository.findByIdAndUserId(chatSessionId, user.getId())
+        return conversationRepository.findByIdAndUserId(conversationId, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Chat session not found or not owned by user: " + chatSessionId));
+                        "Conversation not found or not owned by user: " + conversationId));
     }
 
     private String buildTitleFromMessage(String message) {
@@ -147,6 +147,16 @@ public class ChatService {
     }
 
     public String getChatReply(String userMessage) {
+        return getChatReply(userMessage, null);
+    }
+
+    /**
+     * @param modelOverride model to use for this call; falls back to the configured
+     *                      default ({@code openai.api.model}) when null/blank (e.g. for
+     *                      conversations created before the model_name column existed).
+     */
+    public String getChatReply(String userMessage, String modelOverride) {
+        String model = (modelOverride == null || modelOverride.isBlank()) ? apiModel : modelOverride;
         try {
             HttpHeaders headers = new HttpHeaders();
             if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.contains("placeholder")) {
@@ -157,7 +167,7 @@ public class ChatService {
             headers.set("X-Title", "GHInternship AI Chat");
 
             Map<String, Object> body = Map.of(
-                    "model", apiModel,
+                    "model", model,
                     "messages", List.of(Map.of("role", "user", "content", userMessage)),
                     "max_tokens", 150
             );

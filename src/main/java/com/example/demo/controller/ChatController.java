@@ -1,9 +1,9 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.dto.ChatRequest;
 import com.example.demo.dto.ChatResponse;
-import com.example.demo.dto.ChatSessionResponse;
+import com.example.demo.dto.ConversationResponse;
+import com.example.demo.dto.MessageResponse;
 import com.example.demo.service.ChatService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -43,14 +43,14 @@ public class ChatController {
     }
 
     @GetMapping("/sessions")
-    public ResponseEntity<List<ChatSessionResponse>> listSessions(Authentication authentication) {
+    public ResponseEntity<List<ConversationResponse>> listSessions(Authentication authentication) {
         String username = authentication.getName();
         log.info("Listing chat sessions for {}", username);
         return ResponseEntity.ok(chatService.listSessions(username));
     }
 
     @GetMapping("/sessions/{sessionId}")
-    public ResponseEntity<List<ChatMessageResponse>> getSessionMessages(
+    public ResponseEntity<List<MessageResponse>> getSessionMessages(
             @PathVariable Long sessionId,
             Authentication authentication) {
         String username = authentication.getName();

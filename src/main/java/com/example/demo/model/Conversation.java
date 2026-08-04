@@ -16,9 +16,13 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A chat conversation between a {@link User} and the AI, holding an ordered
+ * list of {@link Message}s. Formerly named {@code ChatSession}.
+ */
 @Entity
-@Table(name = "chat_sessions")
-public class ChatSession {
+@Table(name = "conversations")
+public class Conversation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +31,10 @@ public class ChatSession {
     @Column(nullable = false, length = 255)
     private String title;
 
+    /** AI model used for this conversation (e.g. "deepseek/deepseek-r1:free"), for record-keeping. */
+    @Column(name = "model_name", length = 100)
+    private String modelName;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -34,15 +42,21 @@ public class ChatSession {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ChatMessage> messages = new ArrayList<>();
+    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Message> messages = new ArrayList<>();
 
-    public ChatSession() {
+    public Conversation() {
     }
 
-    public ChatSession(String title, User user) {
+    public Conversation(String title, User user) {
         this.title = title;
         this.user = user;
+    }
+
+    public Conversation(String title, User user, String modelName) {
+        this.title = title;
+        this.user = user;
+        this.modelName = modelName;
     }
 
     public Long getId() {
@@ -61,6 +75,14 @@ public class ChatSession {
         this.title = title;
     }
 
+    public String getModelName() {
+        return modelName;
+    }
+
+    public void setModelName(String modelName) {
+        this.modelName = modelName;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -77,11 +99,11 @@ public class ChatSession {
         this.user = user;
     }
 
-    public List<ChatMessage> getMessages() {
+    public List<Message> getMessages() {
         return messages;
     }
 
-    public void setMessages(List<ChatMessage> messages) {
+    public void setMessages(List<Message> messages) {
         this.messages = messages;
     }
 
@@ -89,14 +111,14 @@ public class ChatSession {
      * Keeps both sides of the bidirectional relationship in sync
      * and ensures cascade persist works for new messages.
      */
-    public void addMessage(ChatMessage message) {
+    public void addMessage(Message message) {
         messages.add(message);
-        message.setSession(this);
+        message.setConversation(this);
     }
 
-    public void removeMessage(ChatMessage message) {
+    public void removeMessage(Message message) {
         messages.remove(message);
-        message.setSession(null);
+        message.setConversation(null);
     }
 
     @PrePersist

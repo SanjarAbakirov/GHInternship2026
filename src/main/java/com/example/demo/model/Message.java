@@ -12,9 +12,13 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
+/**
+ * A single user or AI message within a {@link Conversation}.
+ * Formerly named {@code ChatMessage}.
+ */
 @Entity
-@Table(name = "chat_messages")
-public class ChatMessage {
+@Table(name = "messages")
+public class Message {
 
     public static final String ROLE_USER = "user";
     public static final String ROLE_AI = "ai";
@@ -34,21 +38,21 @@ public class ChatMessage {
     private String role;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "session_id", nullable = false)
-    private ChatSession session;
+    @JoinColumn(name = "conversation_id", nullable = false)
+    private Conversation conversation;
 
-    public ChatMessage() {
+    public Message() {
     }
 
-    public ChatMessage(String content, String role) {
+    public Message(String content, String role) {
         this.content = content;
         this.role = role;
     }
 
-    public ChatMessage(String content, String role, ChatSession session) {
+    public Message(String content, String role, Conversation conversation) {
         this.content = content;
         this.role = role;
-        this.session = session;
+        this.conversation = conversation;
     }
 
     public Long getId() {
@@ -83,12 +87,12 @@ public class ChatMessage {
         this.role = role;
     }
 
-    public ChatSession getSession() {
-        return session;
+    public Conversation getConversation() {
+        return conversation;
     }
 
-    public void setSession(ChatSession session) {
-        this.session = session;
+    public void setConversation(Conversation conversation) {
+        this.conversation = conversation;
     }
 
     @PrePersist

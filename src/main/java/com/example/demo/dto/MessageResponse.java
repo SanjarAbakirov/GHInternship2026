@@ -2,17 +2,17 @@ package com.example.demo.dto;
 
 import java.time.LocalDateTime;
 
-public class ChatMessageResponse {
+public class MessageResponse {
 
     private Long id;
     private String content;
     private String role;
     private LocalDateTime createdAt;
 
-    public ChatMessageResponse() {
+    public MessageResponse() {
     }
 
-    public ChatMessageResponse(Long id, String content, String role, LocalDateTime createdAt) {
+    public MessageResponse(Long id, String content, String role, LocalDateTime createdAt) {
         this.id = id;
         this.content = content;
         this.role = role;

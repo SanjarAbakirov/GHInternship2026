@@ -6,16 +6,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.demo.dto.ChatMessageResponse;
 import com.example.demo.dto.ChatResponse;
-import com.example.demo.dto.ChatSessionResponse;
-import com.example.demo.exception.AiServiceException;
+import com.example.demo.dto.ConversationResponse;
+import com.example.demo.dto.MessageResponse;
 import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.model.ChatMessage;
-import com.example.demo.model.ChatSession;
+import com.example.demo.model.Conversation;
+import com.example.demo.model.Message;
 import com.example.demo.model.User;
-import com.example.demo.repository.ChatMessageRepository;
-import com.example.demo.repository.ChatSessionRepository;
+import com.example.demo.repository.ConversationRepository;
+import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,8 +36,8 @@ public class ChatServiceTest {
 
     private RestTemplate restTemplateMock;
     private UserRepository userRepository;
-    private ChatSessionRepository chatSessionRepository;
-    private ChatMessageRepository chatMessageRepository;
+    private ConversationRepository conversationRepository;
+    private MessageRepository messageRepository;
     private ChatService chatService;
     private User testUser;
 
@@ -46,14 +45,14 @@ public class ChatServiceTest {
     public void setUp() {
         restTemplateMock = Mockito.mock(RestTemplate.class);
         userRepository = Mockito.mock(UserRepository.class);
-        chatSessionRepository = Mockito.mock(ChatSessionRepository.class);
-        chatMessageRepository = Mockito.mock(ChatMessageRepository.class);
+        conversationRepository = Mockito.mock(ConversationRepository.class);
+        messageRepository = Mockito.mock(MessageRepository.class);
 
         chatService = new ChatService(
                 restTemplateMock,
                 userRepository,
-                chatSessionRepository,
-                chatMessageRepository);
+                conversationRepository,
+                messageRepository);
 
         ReflectionTestUtils.setField(chatService, "apiKey", "test-api-key");
         ReflectionTestUtils.setField(chatService, "apiUrl", "http://test.api.url");
@@ -65,85 +64,86 @@ public class ChatServiceTest {
     }
 
     @Test
-    public void chat_createsNewSessionAndPersistsBothMessages() {
+    public void chat_createsNewConversationAndPersistsBothMessages() {
         stubAiReply("Hello from AI");
 
-        when(chatSessionRepository.save(any(ChatSession.class))).thenAnswer(invocation -> {
-            ChatSession session = invocation.getArgument(0);
-            session.setId(10L);
-            return session;
+        when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> {
+            Conversation conversation = invocation.getArgument(0);
+            conversation.setId(10L);
+            return conversation;
         });
-        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ChatResponse response = chatService.chat("testuser", "Hello", null);
 
         assertEquals("Hello from AI", response.getReply());
         assertEquals(10L, response.getChatSessionId());
 
-        ArgumentCaptor<ChatSession> sessionCaptor = ArgumentCaptor.forClass(ChatSession.class);
-        verify(chatSessionRepository).save(sessionCaptor.capture());
-        ChatSession savedSession = sessionCaptor.getValue();
-        assertEquals("Hello", savedSession.getTitle());
-        assertEquals(testUser.getId(), savedSession.getUser().getId());
+        ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
+        verify(conversationRepository).save(conversationCaptor.capture());
+        Conversation savedConversation = conversationCaptor.getValue();
+        assertEquals("Hello", savedConversation.getTitle());
+        assertEquals(testUser.getId(), savedConversation.getUser().getId());
+        assertEquals("gpt-3.5-turbo", savedConversation.getModelName());
 
-        ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
-        verify(chatMessageRepository, Mockito.times(2)).save(messageCaptor.capture());
-        List<ChatMessage> savedMessages = messageCaptor.getAllValues();
-        assertEquals(ChatMessage.ROLE_USER, savedMessages.get(0).getRole());
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository, Mockito.times(2)).save(messageCaptor.capture());
+        List<Message> savedMessages = messageCaptor.getAllValues();
+        assertEquals(Message.ROLE_USER, savedMessages.get(0).getRole());
         assertEquals("Hello", savedMessages.get(0).getContent());
-        assertEquals(10L, savedMessages.get(0).getSession().getId());
-        assertEquals(ChatMessage.ROLE_AI, savedMessages.get(1).getRole());
+        assertEquals(10L, savedMessages.get(0).getConversation().getId());
+        assertEquals(Message.ROLE_AI, savedMessages.get(1).getRole());
         assertEquals("Hello from AI", savedMessages.get(1).getContent());
-        assertEquals(10L, savedMessages.get(1).getSession().getId());
+        assertEquals(10L, savedMessages.get(1).getConversation().getId());
     }
 
     @Test
-    public void chat_usesExistingSessionWhenIdProvided() {
+    public void chat_usesExistingConversationWhenIdProvided() {
         stubAiReply("Follow-up reply");
 
-        ChatSession existing = new ChatSession("Existing", testUser);
+        Conversation existing = new Conversation("Existing", testUser);
         existing.setId(22L);
-        when(chatSessionRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
-        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ChatResponse response = chatService.chat("testuser", "Next message", 22L);
 
         assertEquals(22L, response.getChatSessionId());
         assertEquals("Follow-up reply", response.getReply());
-        verify(chatSessionRepository, Mockito.never()).save(any(ChatSession.class));
+        verify(conversationRepository, Mockito.never()).save(any(Conversation.class));
 
-        ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
-        verify(chatMessageRepository, Mockito.times(2)).save(messageCaptor.capture());
-        List<ChatMessage> savedMessages = messageCaptor.getAllValues();
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository, Mockito.times(2)).save(messageCaptor.capture());
+        List<Message> savedMessages = messageCaptor.getAllValues();
         assertEquals("Next message", savedMessages.get(0).getContent());
-        assertEquals(ChatMessage.ROLE_USER, savedMessages.get(0).getRole());
-        assertEquals(existing.getId(), savedMessages.get(0).getSession().getId());
+        assertEquals(Message.ROLE_USER, savedMessages.get(0).getRole());
+        assertEquals(existing.getId(), savedMessages.get(0).getConversation().getId());
         assertEquals("Follow-up reply", savedMessages.get(1).getContent());
-        assertEquals(ChatMessage.ROLE_AI, savedMessages.get(1).getRole());
-        assertEquals(existing.getId(), savedMessages.get(1).getSession().getId());
+        assertEquals(Message.ROLE_AI, savedMessages.get(1).getRole());
+        assertEquals(existing.getId(), savedMessages.get(1).getConversation().getId());
     }
 
     @Test
-    public void chat_throwsWhenSessionMissingOrNotOwned() {
-        when(chatSessionRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+    public void chat_throwsWhenConversationMissingOrNotOwned() {
+        when(conversationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
                 () -> chatService.chat("testuser", "Hello", 99L));
     }
 
     @Test
-    public void listSessions_returnsSessionsOrderedByLastActivity() {
-        ChatSession first = new ChatSession("First", testUser);
+    public void listSessions_returnsConversationsOrderedByLastActivity() {
+        Conversation first = new Conversation("First", testUser);
         first.setId(1L);
         first.setCreatedAt(LocalDateTime.of(2026, 1, 1, 10, 0));
-        ChatSession second = new ChatSession("Second", testUser);
+        Conversation second = new Conversation("Second", testUser);
         second.setId(2L);
         second.setCreatedAt(LocalDateTime.of(2026, 1, 2, 10, 0));
 
-        when(chatSessionRepository.findByUserIdOrderByLastActivityDesc(1L))
+        when(conversationRepository.findByUserIdOrderByLastActivityDesc(1L))
                 .thenReturn(List.of(second, first));
 
-        List<ChatSessionResponse> sessions = chatService.listSessions("testuser");
+        List<ConversationResponse> sessions = chatService.listSessions("testuser");
 
         assertEquals(2, sessions.size());
         assertEquals(2L, sessions.get(0).getId());
@@ -152,32 +152,32 @@ public class ChatServiceTest {
     }
 
     @Test
-    public void getSessionMessages_returnsMessagesForOwnedSession() {
-        ChatSession session = new ChatSession("Owned", testUser);
-        session.setId(7L);
-        when(chatSessionRepository.findByIdAndUserId(7L, 1L)).thenReturn(Optional.of(session));
+    public void getSessionMessages_returnsMessagesForOwnedConversation() {
+        Conversation conversation = new Conversation("Owned", testUser);
+        conversation.setId(7L);
+        when(conversationRepository.findByIdAndUserId(7L, 1L)).thenReturn(Optional.of(conversation));
 
-        ChatMessage userMsg = new ChatMessage("Hi", ChatMessage.ROLE_USER, session);
+        Message userMsg = new Message("Hi", Message.ROLE_USER, conversation);
         userMsg.setId(100L);
         userMsg.setCreatedAt(LocalDateTime.of(2026, 1, 1, 12, 0));
-        ChatMessage aiMsg = new ChatMessage("Hello", ChatMessage.ROLE_AI, session);
+        Message aiMsg = new Message("Hello", Message.ROLE_AI, conversation);
         aiMsg.setId(101L);
         aiMsg.setCreatedAt(LocalDateTime.of(2026, 1, 1, 12, 1));
-        when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(7L))
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(7L))
                 .thenReturn(List.of(userMsg, aiMsg));
 
-        List<ChatMessageResponse> messages = chatService.getSessionMessages("testuser", 7L);
+        List<MessageResponse> messages = chatService.getSessionMessages("testuser", 7L);
 
         assertEquals(2, messages.size());
         assertEquals("Hi", messages.get(0).getContent());
-        assertEquals(ChatMessage.ROLE_USER, messages.get(0).getRole());
+        assertEquals(Message.ROLE_USER, messages.get(0).getRole());
         assertEquals("Hello", messages.get(1).getContent());
-        assertEquals(ChatMessage.ROLE_AI, messages.get(1).getRole());
+        assertEquals(Message.ROLE_AI, messages.get(1).getRole());
     }
 
     @Test
-    public void getSessionMessages_throwsWhenSessionNotOwned() {
-        when(chatSessionRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+    public void getSessionMessages_throwsWhenConversationNotOwned() {
+        when(conversationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
                 () -> chatService.getSessionMessages("testuser", 99L));
