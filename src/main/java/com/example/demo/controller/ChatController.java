@@ -2,8 +2,8 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.ChatRequest;
 import com.example.demo.dto.ChatResponse;
+import com.example.demo.dto.ConversationDetailResponse;
 import com.example.demo.dto.ConversationResponse;
-import com.example.demo.dto.MessageResponse;
 import com.example.demo.service.ChatService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -35,10 +35,11 @@ public class ChatController {
             @Valid @RequestBody ChatRequest request,
             Authentication authentication) {
         String username = authentication.getName();
-        log.info("Received chat message from {} (session={}, length={})",
-                username, request.getChatSessionId(), request.getMessage().length());
-        ChatResponse response = chatService.chat(username, request.getMessage(), request.getChatSessionId());
-        log.debug("AI reply generated for session {}", response.getChatSessionId());
+        log.info("Received chat message from {} (conversation={}, length={})",
+                username, request.getConversationId(), request.getMessage().length());
+        ChatResponse response = chatService.chat(
+                username, request.getMessage(), request.getConversationId(), request.getModelName());
+        log.debug("AI reply generated for conversation {}", response.getConversationId());
         return ResponseEntity.ok(response);
     }
 
@@ -50,11 +51,11 @@ public class ChatController {
     }
 
     @GetMapping("/sessions/{sessionId}")
-    public ResponseEntity<List<MessageResponse>> getSessionMessages(
+    public ResponseEntity<ConversationDetailResponse> getSessionMessages(
             @PathVariable Long sessionId,
             Authentication authentication) {
         String username = authentication.getName();
-        log.info("Fetching messages for session {} by {}", sessionId, username);
-        return ResponseEntity.ok(chatService.getSessionMessages(username, sessionId));
+        log.info("Fetching conversation detail for session {} by {}", sessionId, username);
+        return ResponseEntity.ok(chatService.getConversationDetail(username, sessionId));
     }
 }

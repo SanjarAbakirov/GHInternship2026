@@ -96,11 +96,14 @@ class ChatHistoryIntegrationTest {
         mockMvc.perform(get("/api/chat/sessions/{sessionId}", ownerConversation.getId())
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].content").value("Hi there"))
-                .andExpect(jsonPath("$[0].role").value("user"))
-                .andExpect(jsonPath("$[1].content").value("Hello back"))
-                .andExpect(jsonPath("$[1].role").value("ai"));
+                .andExpect(jsonPath("$.id").value(ownerConversation.getId()))
+                .andExpect(jsonPath("$.title").value("Owner chat"))
+                .andExpect(jsonPath("$.messageCount").value(2))
+                .andExpect(jsonPath("$.messages.length()").value(2))
+                .andExpect(jsonPath("$.messages[0].content").value("Hi there"))
+                .andExpect(jsonPath("$.messages[0].role").value("user"))
+                .andExpect(jsonPath("$.messages[1].content").value("Hello back"))
+                .andExpect(jsonPath("$.messages[1].role").value("ai"));
     }
 
     @Test
