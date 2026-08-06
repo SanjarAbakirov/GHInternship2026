@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.config.SecurityConfig;
 import com.example.demo.dto.ChatResponse;
+import com.example.demo.dto.ConversationDetailResponse;
 import com.example.demo.dto.ConversationResponse;
 import com.example.demo.dto.MessageResponse;
 import com.example.demo.exception.ResourceNotFoundException;
@@ -49,8 +50,8 @@ class ChatControllerTest {
 
     @Test
     void whenValidTokenProvided_thenReturns200WithReplyAndSessionId() throws Exception {
-        Mockito.when(chatService.chat("testuser", "Hello AI!", null))
-                .thenReturn(new ChatResponse("Mocked AI reply", 5L));
+        Mockito.when(chatService.chat("testuser", "Hello AI!", null, null))
+                .thenReturn(new ChatResponse("Mocked AI reply", 5L, "Hello AI!", true, LocalDateTime.of(2026, 1, 1, 10, 0)));
 
         String token = jwtUtil.generateToken("testuser");
 
@@ -60,22 +61,25 @@ class ChatControllerTest {
                         .content("{\"message\":\"Hello AI!\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply").value("Mocked AI reply"))
-                .andExpect(jsonPath("$.chatSessionId").value(5));
+                .andExpect(jsonPath("$.conversationId").value(5))
+                .andExpect(jsonPath("$.conversationTitle").value("Hello AI!"))
+                .andExpect(jsonPath("$.newConversation").value(true));
     }
 
     @Test
-    void whenExistingSessionIdProvided_thenPassesItToService() throws Exception {
-        Mockito.when(chatService.chat("testuser", "Follow up", 5L))
-                .thenReturn(new ChatResponse("Next reply", 5L));
+    void whenExistingConversationIdProvided_thenPassesItToService() throws Exception {
+        Mockito.when(chatService.chat("testuser", "Follow up", 5L, null))
+                .thenReturn(new ChatResponse("Next reply", 5L, "Existing chat", false, LocalDateTime.of(2026, 1, 1, 10, 0)));
 
         String token = jwtUtil.generateToken("testuser");
 
         mockMvc.perform(post("/api/chat")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"message\":\"Follow up\",\"chatSessionId\":5}"))
+                        .content("{\"message\":\"Follow up\",\"conversationId\":5}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.chatSessionId").value(5))
+                .andExpect(jsonPath("$.conversationId").value(5))
+                .andExpect(jsonPath("$.newConversation").value(false))
                 .andExpect(jsonPath("$.reply").value("Next reply"));
     }
 
@@ -100,7 +104,13 @@ class ChatControllerTest {
     void listSessions_withValidToken_returnsSessions() throws Exception {
         Mockito.when(chatService.listSessions("testuser"))
                 .thenReturn(List.of(new ConversationResponse(
-                        3L, "Hello chat", "gpt-3.5-turbo", LocalDateTime.of(2026, 1, 1, 10, 0))));
+                        3L,
+                        "Hello chat",
+                        "gpt-3.5-turbo",
+                        LocalDateTime.of(2026, 1, 1, 10, 0),
+                        LocalDateTime.of(2026, 1, 1, 10, 5),
+                        2L,
+                        "Hello chat")));
 
         String token = jwtUtil.generateToken("testuser");
 
@@ -108,30 +118,39 @@ class ChatControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(3))
-                .andExpect(jsonPath("$[0].title").value("Hello chat"));
+                .andExpect(jsonPath("$[0].title").value("Hello chat"))
+                .andExpect(jsonPath("$[0].messageCount").value(2));
     }
 
     @Test
-    void getSessionMessages_withValidToken_returnsMessages() throws Exception {
-        Mockito.when(chatService.getSessionMessages("testuser", 3L))
-                .thenReturn(List.of(
-                        new MessageResponse(1L, "Hi", "user", LocalDateTime.of(2026, 1, 1, 10, 0)),
-                        new MessageResponse(2L, "Hello", "ai", LocalDateTime.of(2026, 1, 1, 10, 1))));
+    void getSessionMessages_withValidToken_returnsConversationDetail() throws Exception {
+        Mockito.when(chatService.getConversationDetail("testuser", 3L))
+                .thenReturn(new ConversationDetailResponse(
+                        3L,
+                        "Hello chat",
+                        "gpt-3.5-turbo",
+                        LocalDateTime.of(2026, 1, 1, 10, 0),
+                        LocalDateTime.of(2026, 1, 1, 10, 1),
+                        List.of(
+                                new MessageResponse(1L, "Hi", "user", LocalDateTime.of(2026, 1, 1, 10, 0)),
+                                new MessageResponse(2L, "Hello", "ai", LocalDateTime.of(2026, 1, 1, 10, 1)))));
 
         String token = jwtUtil.generateToken("testuser");
 
         mockMvc.perform(get("/api/chat/sessions/3")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].content").value("Hi"))
-                .andExpect(jsonPath("$[0].role").value("user"))
-                .andExpect(jsonPath("$[1].content").value("Hello"))
-                .andExpect(jsonPath("$[1].role").value("ai"));
+                .andExpect(jsonPath("$.id").value(3))
+                .andExpect(jsonPath("$.messageCount").value(2))
+                .andExpect(jsonPath("$.messages[0].content").value("Hi"))
+                .andExpect(jsonPath("$.messages[0].role").value("user"))
+                .andExpect(jsonPath("$.messages[1].content").value("Hello"))
+                .andExpect(jsonPath("$.messages[1].role").value("ai"));
     }
 
     @Test
     void getSessionMessages_whenNotOwned_returns404() throws Exception {
-        Mockito.when(chatService.getSessionMessages("testuser", 99L))
+        Mockito.when(chatService.getConversationDetail("testuser", 99L))
                 .thenThrow(new ResourceNotFoundException("Conversation not found or not owned by user: 99"));
 
         String token = jwtUtil.generateToken("testuser");

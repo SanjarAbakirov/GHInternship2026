@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.ChatResponse;
+import com.example.demo.dto.ConversationDetailResponse;
 import com.example.demo.dto.ConversationResponse;
 import com.example.demo.dto.MessageResponse;
 import com.example.demo.exception.ResourceNotFoundException;
@@ -62,10 +63,11 @@ public class ChatService {
      * Each repository call below is already transactional on its own via Spring
      * Data JPA.
      */
-    public ChatResponse chat(String username, String userMessage, Long conversationId) {
+    public ChatResponse chat(String username, String userMessage, Long conversationId, String modelNameOverride) {
         User user = requireUser(username);
+        boolean isNewConversation = conversationId == null;
 
-        Conversation conversation = resolveConversation(user, conversationId, userMessage);
+        Conversation conversation = resolveConversation(user, conversationId, userMessage, modelNameOverride);
 
         Message userMsg = new Message(userMessage, Message.ROLE_USER, conversation);
         conversation.addMessage(userMsg);
@@ -83,7 +85,8 @@ public class ChatService {
         // findByUserIdOrderByUpdatedAtDesc reflects this conversation's new activity.
         conversationRepository.save(conversation);
 
-        return new ChatResponse(aiReply, conversation.getId());
+        return new ChatResponse(
+                aiReply, conversation.getId(), conversation.getTitle(), isNewConversation, aiMsg.getCreatedAt());
     }
 
     /**
@@ -93,32 +96,38 @@ public class ChatService {
     public List<ConversationResponse> listSessions(String username) {
         User user = requireUser(username);
         return conversationRepository.findByUserIdOrderByUpdatedAtDesc(user.getId()).stream()
-                .map(conversation -> new ConversationResponse(
-                        conversation.getId(),
-                        conversation.getTitle(),
-                        conversation.getModelName(),
-                        conversation.getCreatedAt()))
+                .map(this::toConversationResponse)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Returns messages for a conversation owned by the authenticated user.
+     * Returns conversation metadata plus the full ordered message list, for a conversation
+     * owned by the authenticated user.
      * Throws {@link ResourceNotFoundException} if the conversation is missing or belongs to someone else.
      */
     @Transactional(readOnly = true)
-    public List<MessageResponse> getSessionMessages(String username, Long conversationId) {
+    public ConversationDetailResponse getConversationDetail(String username, Long conversationId) {
         User user = requireUser(username);
         Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Conversation not found or not owned by user: " + conversationId));
 
-        return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()).stream()
-                .map(message -> new MessageResponse(
-                        message.getId(),
-                        message.getContent(),
-                        message.getRole(),
-                        message.getCreatedAt()))
-                .collect(Collectors.toList());
+        List<MessageResponse> messages =
+                messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()).stream()
+                        .map(message -> new MessageResponse(
+                                message.getId(),
+                                message.getContent(),
+                                message.getRole(),
+                                message.getCreatedAt()))
+                        .collect(Collectors.toList());
+
+        return new ConversationDetailResponse(
+                conversation.getId(),
+                conversation.getTitle(),
+                conversation.getModelName(),
+                conversation.getCreatedAt(),
+                conversation.getUpdatedAt(),
+                messages);
     }
 
     private User requireUser(String username) {
@@ -126,10 +135,14 @@ public class ChatService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
     }
 
-    private Conversation resolveConversation(User user, Long conversationId, String firstMessage) {
+    private Conversation resolveConversation(
+            User user, Long conversationId, String firstMessage, String modelNameOverride) {
         if (conversationId == null) {
             String title = buildTitleFromMessage(firstMessage);
-            Conversation created = conversationRepository.save(new Conversation(title, user, apiModel));
+            String modelName = (modelNameOverride == null || modelNameOverride.isBlank())
+                    ? apiModel
+                    : modelNameOverride;
+            Conversation created = conversationRepository.save(new Conversation(title, user, modelName));
             log.info("Created conversation {} for user {}", created.getId(), user.getUsername());
             return created;
         }
@@ -139,11 +152,39 @@ public class ChatService {
                         "Conversation not found or not owned by user: " + conversationId));
     }
 
+    /**
+     * Builds the {@code messageCount}/{@code lastMessagePreview} fields with one extra query each
+     * per conversation. Acceptable N+1 at this project's scale; batch with a grouped query if the
+     * number of conversations per user grows significantly.
+     */
+    private ConversationResponse toConversationResponse(Conversation conversation) {
+        long messageCount = messageRepository.countByConversationId(conversation.getId());
+        String lastMessagePreview = messageRepository
+                .findFirstByConversationIdOrderByCreatedAtDesc(conversation.getId())
+                .map(Message::getContent)
+                .map(this::truncate)
+                .orElse(null);
+
+        return new ConversationResponse(
+                conversation.getId(),
+                conversation.getTitle(),
+                conversation.getModelName(),
+                conversation.getCreatedAt(),
+                conversation.getUpdatedAt(),
+                messageCount,
+                lastMessagePreview);
+    }
+
     private String buildTitleFromMessage(String message) {
         String normalized = message == null ? "" : message.trim().replaceAll("\\s+", " ");
         if (normalized.isEmpty()) {
             return "New chat";
         }
+        return truncate(normalized);
+    }
+
+    private String truncate(String text) {
+        String normalized = text == null ? "" : text.trim().replaceAll("\\s+", " ");
         if (normalized.length() <= TITLE_MAX_LENGTH) {
             return normalized;
         }

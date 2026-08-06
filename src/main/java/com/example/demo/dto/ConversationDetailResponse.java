@@ -1,46 +1,39 @@
 package com.example.demo.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * Conversation metadata for list views (e.g. the sidebar). Does not include
- * the full message list; see {@link ConversationDetailResponse} for that.
+ * Conversation metadata plus its full ordered message list, returned when a
+ * single conversation is opened (e.g. loading chat history into the UI).
  */
-public class ConversationResponse {
+public class ConversationDetailResponse {
 
     private Long id;
     private String title;
     private String modelName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private Long messageCount;
-    private String lastMessagePreview;
+    private int messageCount;
+    private List<MessageResponse> messages;
 
-    public ConversationResponse() {
+    public ConversationDetailResponse() {
     }
 
-    public ConversationResponse(Long id, String title, String modelName, LocalDateTime createdAt) {
-        this.id = id;
-        this.title = title;
-        this.modelName = modelName;
-        this.createdAt = createdAt;
-    }
-
-    public ConversationResponse(
+    public ConversationDetailResponse(
             Long id,
             String title,
             String modelName,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            Long messageCount,
-            String lastMessagePreview) {
+            List<MessageResponse> messages) {
         this.id = id;
         this.title = title;
         this.modelName = modelName;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.messageCount = messageCount;
-        this.lastMessagePreview = lastMessagePreview;
+        this.messages = messages;
+        this.messageCount = messages == null ? 0 : messages.size();
     }
 
     public Long getId() {
@@ -83,19 +76,19 @@ public class ConversationResponse {
         this.updatedAt = updatedAt;
     }
 
-    public Long getMessageCount() {
+    public int getMessageCount() {
         return messageCount;
     }
 
-    public void setMessageCount(Long messageCount) {
+    public void setMessageCount(int messageCount) {
         this.messageCount = messageCount;
     }
 
-    public String getLastMessagePreview() {
-        return lastMessagePreview;
+    public List<MessageResponse> getMessages() {
+        return messages;
     }
 
-    public void setLastMessagePreview(String lastMessagePreview) {
-        this.lastMessagePreview = lastMessagePreview;
+    public void setMessages(List<MessageResponse> messages) {
+        this.messages = messages;
     }
 }

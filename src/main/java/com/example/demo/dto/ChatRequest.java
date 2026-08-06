@@ -7,8 +7,11 @@ public class ChatRequest {
     @NotBlank(message = "Message cannot be empty")
     private String message;
 
-    /** Optional existing session id; omit/null to start a new conversation. */
-    private Long chatSessionId;
+    /** Optional existing conversation id; omit/null to start a new conversation. */
+    private Long conversationId;
+
+    /** Optional AI model override; only applied when starting a new conversation. */
+    private String modelName;
 
     public ChatRequest() {
     }
@@ -17,9 +20,15 @@ public class ChatRequest {
         this.message = message;
     }
 
-    public ChatRequest(String message, Long chatSessionId) {
+    public ChatRequest(String message, Long conversationId) {
         this.message = message;
-        this.chatSessionId = chatSessionId;
+        this.conversationId = conversationId;
+    }
+
+    public ChatRequest(String message, Long conversationId, String modelName) {
+        this.message = message;
+        this.conversationId = conversationId;
+        this.modelName = modelName;
     }
 
     public String getMessage() {
@@ -30,11 +39,19 @@ public class ChatRequest {
         this.message = message;
     }
 
-    public Long getChatSessionId() {
-        return chatSessionId;
+    public Long getConversationId() {
+        return conversationId;
     }
 
-    public void setChatSessionId(Long chatSessionId) {
-        this.chatSessionId = chatSessionId;
+    public void setConversationId(Long conversationId) {
+        this.conversationId = conversationId;
+    }
+
+    public String getModelName() {
+        return modelName;
+    }
+
+    public void setModelName(String modelName) {
+        this.modelName = modelName;
     }
 }
