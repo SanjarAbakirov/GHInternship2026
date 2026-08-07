@@ -77,6 +77,8 @@ public class ChatServiceTest {
             message.setCreatedAt(LocalDateTime.now());
             return message;
         });
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(10L))
+                .thenReturn(List.of(new Message("Hello", Message.ROLE_USER)));
 
         ChatResponse response = chatService.chat("testuser", "Hello", null, null);
 
@@ -115,6 +117,11 @@ public class ChatServiceTest {
         when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
         when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(22L))
+                .thenReturn(List.of(
+                        new Message("Hi earlier", Message.ROLE_USER),
+                        new Message("Hi there", Message.ROLE_AI),
+                        new Message("Next message", Message.ROLE_USER)));
 
         ChatResponse response = chatService.chat("testuser", "Next message", 22L, null);
 
@@ -136,6 +143,39 @@ public class ChatServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void chat_sendsFullConversationHistoryToAiWithMappedRoles() {
+        stubAiReply("Follow-up reply");
+
+        Conversation existing = new Conversation("Existing", testUser);
+        existing.setId(22L);
+        when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
+        when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(22L))
+                .thenReturn(List.of(
+                        new Message("Hi earlier", Message.ROLE_USER),
+                        new Message("Hi there", Message.ROLE_AI),
+                        new Message("Next message", Message.ROLE_USER)));
+
+        chatService.chat("testuser", "Next message", 22L, null);
+
+        ArgumentCaptor<HttpEntity<Map<String, Object>>> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplateMock).postForEntity(
+                ArgumentMatchers.eq("http://test.api.url"), entityCaptor.capture(), ArgumentMatchers.eq(Map.class));
+
+        List<Map<String, Object>> sentMessages =
+                (List<Map<String, Object>>) entityCaptor.getValue().getBody().get("messages");
+        assertEquals(3, sentMessages.size());
+        assertEquals("user", sentMessages.get(0).get("role"));
+        assertEquals("Hi earlier", sentMessages.get(0).get("content"));
+        assertEquals("assistant", sentMessages.get(1).get("role"));
+        assertEquals("Hi there", sentMessages.get(1).get("content"));
+        assertEquals("user", sentMessages.get(2).get("role"));
+        assertEquals("Next message", sentMessages.get(2).get("content"));
+    }
+
+    @Test
     public void chat_throwsWhenConversationMissingOrNotOwned() {
         when(conversationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
 
@@ -153,6 +193,8 @@ public class ChatServiceTest {
             return conversation;
         });
         when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(11L))
+                .thenReturn(List.of(new Message("Hello", Message.ROLE_USER)));
 
         chatService.chat("testuser", "Hello", null, "custom-model");
 
@@ -221,6 +263,25 @@ public class ChatServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> chatService.getConversationDetail("testuser", 99L));
+    }
+
+    @Test
+    public void deleteConversation_deletesOwnedConversation() {
+        Conversation existing = new Conversation("Existing", testUser);
+        existing.setId(22L);
+        when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
+
+        chatService.deleteConversation("testuser", 22L);
+
+        verify(conversationRepository).delete(existing);
+    }
+
+    @Test
+    public void deleteConversation_throwsWhenConversationNotOwned() {
+        when(conversationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> chatService.deleteConversation("testuser", 99L));
     }
 
     @Test

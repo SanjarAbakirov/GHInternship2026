@@ -21,6 +21,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -163,6 +164,35 @@ class ChatControllerTest {
     @Test
     void getSessionMessages_withoutToken_returns401() throws Exception {
         mockMvc.perform(get("/api/chat/sessions/3"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deleteSession_withValidToken_returns204() throws Exception {
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(delete("/api/chat/sessions/3")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        Mockito.verify(chatService).deleteConversation("testuser", 3L);
+    }
+
+    @Test
+    void deleteSession_whenNotOwned_returns404() throws Exception {
+        Mockito.doThrow(new ResourceNotFoundException("Conversation not found or not owned by user: 99"))
+                .when(chatService).deleteConversation("testuser", 99L);
+
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(delete("/api/chat/sessions/99")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteSession_withoutToken_returns401() throws Exception {
+        mockMvc.perform(delete("/api/chat/sessions/3"))
                 .andExpect(status().isUnauthorized());
     }
 }

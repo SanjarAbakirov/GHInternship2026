@@ -28,6 +28,9 @@ public class ChatService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChatService.class);
     private static final int TITLE_MAX_LENGTH = 80;
 
+    /** Caps how much prior conversation is sent to the AI as context per request. */
+    private static final int MAX_HISTORY_MESSAGES = 20;
+
     @Value("${openai.api.key}")
     private String apiKey;
 
@@ -67,22 +70,30 @@ public class ChatService {
         User user = requireUser(username);
         boolean isNewConversation = conversationId == null;
 
+        // Part A: resolve the user and conversation (create new, or load + validate ownership).
         Conversation conversation = resolveConversation(user, conversationId, userMessage, modelNameOverride);
 
+        // Part B: persist the user's message.
         Message userMsg = new Message(userMessage, Message.ROLE_USER, conversation);
         conversation.addMessage(userMsg);
         messageRepository.save(userMsg);
         log.info("Saved user message for conversation {}", conversation.getId());
 
-        String aiReply = getChatReply(userMessage, conversation.getModelName());
+        // Part C: reload the conversation history (including the message just saved) so the AI
+        // has multi-turn context instead of only seeing the latest message in isolation.
+        List<Message> history =
+                capHistory(messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()));
+        String aiReply = getChatReply(history, conversation.getModelName());
 
+        // Part D: persist the AI's reply.
         Message aiMsg = new Message(aiReply, Message.ROLE_AI, conversation);
         conversation.addMessage(aiMsg);
         messageRepository.save(aiMsg);
         log.info("Saved AI message for conversation {}", conversation.getId());
 
-        // addMessage() above only bumps updatedAt in memory; persist it so
-        // findByUserIdOrderByUpdatedAtDesc reflects this conversation's new activity.
+        // Part E: addMessage() above only bumps updatedAt in memory; persist it so
+        // findByUserIdOrderByUpdatedAtDesc reflects this conversation's new activity, then
+        // build the response DTO with full conversation context.
         conversationRepository.save(conversation);
 
         return new ChatResponse(
@@ -114,11 +125,7 @@ public class ChatService {
 
         List<MessageResponse> messages =
                 messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()).stream()
-                        .map(message -> new MessageResponse(
-                                message.getId(),
-                                message.getContent(),
-                                message.getRole(),
-                                message.getCreatedAt()))
+                        .map(this::toMessageResponse)
                         .collect(Collectors.toList());
 
         return new ConversationDetailResponse(
@@ -128,6 +135,21 @@ public class ChatService {
                 conversation.getCreatedAt(),
                 conversation.getUpdatedAt(),
                 messages);
+    }
+
+    /**
+     * Deletes a conversation (and, via cascade + orphanRemoval on {@link Conversation#getMessages()},
+     * all of its messages) owned by the authenticated user.
+     * Throws {@link ResourceNotFoundException} if the conversation is missing or belongs to someone else.
+     */
+    public void deleteConversation(String username, Long conversationId) {
+        User user = requireUser(username);
+        Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Conversation not found or not owned by user: " + conversationId));
+
+        conversationRepository.delete(conversation);
+        log.info("Deleted conversation {} for user {}", conversationId, user.getUsername());
     }
 
     private User requireUser(String username) {
@@ -191,6 +213,23 @@ public class ChatService {
         return normalized.substring(0, TITLE_MAX_LENGTH - 3) + "...";
     }
 
+    private MessageResponse toMessageResponse(Message message) {
+        return new MessageResponse(message.getId(), message.getContent(), message.getRole(), message.getCreatedAt());
+    }
+
+    /** Keeps only the most recent messages so the AI request payload doesn't grow unbounded. */
+    private List<Message> capHistory(List<Message> history) {
+        if (history.size() <= MAX_HISTORY_MESSAGES) {
+            return history;
+        }
+        return history.subList(history.size() - MAX_HISTORY_MESSAGES, history.size());
+    }
+
+    /** Our stored role ({@link Message#ROLE_AI}) differs from the OpenAI-style API role name. */
+    private String toApiRole(String storedRole) {
+        return Message.ROLE_AI.equals(storedRole) ? "assistant" : "user";
+    }
+
     public String getChatReply(String userMessage) {
         return getChatReply(userMessage, null);
     }
@@ -201,7 +240,20 @@ public class ChatService {
      *                      conversations created before the model_name column existed).
      */
     public String getChatReply(String userMessage, String modelOverride) {
+        return getChatReply(List.of(new Message(userMessage, Message.ROLE_USER)), modelOverride);
+    }
+
+    /**
+     * Calls the AI service with the full ordered conversation history as context (multi-turn),
+     * rather than just the latest message in isolation.
+     *
+     * @param history ordered oldest-first messages to send, expected to end with the latest user message.
+     * @param modelOverride model to use for this call; falls back to the configured
+     *                      default ({@code openai.api.model}) when null/blank.
+     */
+    private String getChatReply(List<Message> history, String modelOverride) {
         String model = (modelOverride == null || modelOverride.isBlank()) ? apiModel : modelOverride;
+        String latestMessage = history.isEmpty() ? "" : history.get(history.size() - 1).getContent();
         try {
             HttpHeaders headers = new HttpHeaders();
             if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.contains("placeholder")) {
@@ -211,9 +263,13 @@ public class ChatService {
             headers.set("HTTP-Referer", "http://localhost:3000");
             headers.set("X-Title", "GHInternship AI Chat");
 
+            List<Map<String, Object>> apiMessages = history.stream()
+                    .map(m -> Map.<String, Object>of("role", toApiRole(m.getRole()), "content", m.getContent()))
+                    .collect(Collectors.toList());
+
             Map<String, Object> body = Map.of(
                     "model", model,
-                    "messages", List.of(Map.of("role", "user", "content", userMessage)),
+                    "messages", apiMessages,
                     "max_tokens", 150
             );
 
@@ -225,7 +281,7 @@ public class ChatService {
             return (String) message.get("content");
         } catch (Exception e) {
             log.warn("AI service call unavailable: {}. Returning fallback response.", e.getMessage());
-            return "AI (Offline Mock): Внешний API провайдер недоступен или API-ключ OpenAI истек. Ваше сообщение сохранены в сессии: \"" + userMessage + "\"";
+            return "AI (Offline Mock): Внешний API провайдер недоступен или API-ключ OpenAI истек. Ваше сообщение сохранены в сессии: \"" + latestMessage + "\"";
         }
     }
 }

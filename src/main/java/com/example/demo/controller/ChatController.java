@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,5 +58,15 @@ public class ChatController {
         String username = authentication.getName();
         log.info("Fetching conversation detail for session {} by {}", sessionId, username);
         return ResponseEntity.ok(chatService.getConversationDetail(username, sessionId));
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> deleteSession(
+            @PathVariable Long sessionId,
+            Authentication authentication) {
+        String username = authentication.getName();
+        log.info("Deleting conversation {} for {}", sessionId, username);
+        chatService.deleteConversation(username, sessionId);
+        return ResponseEntity.noContent().build();
     }
 }
