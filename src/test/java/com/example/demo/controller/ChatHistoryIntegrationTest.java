@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -117,5 +119,33 @@ class ChatHistoryIntegrationTest {
         mockMvc.perform(get("/api/chat/sessions/{sessionId}", otherConversation.getId())
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteSession_authenticated_deletesConversationAndCascadesMessages() throws Exception {
+        Long conversationId = ownerConversation.getId();
+        assertTrue(messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId).size() > 0);
+
+        mockMvc.perform(delete("/api/chat/sessions/{sessionId}", conversationId)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNoContent());
+
+        assertTrue(conversationRepository.findByIdAndUserId(conversationId, owner.getId()).isEmpty());
+        assertTrue(messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId).isEmpty());
+    }
+
+    @Test
+    void deleteSession_otherUsersSession_returns404AndDoesNotDelete() throws Exception {
+        mockMvc.perform(delete("/api/chat/sessions/{sessionId}", otherConversation.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNotFound());
+
+        assertTrue(conversationRepository.findByIdAndUserId(otherConversation.getId(), otherUser.getId()).isPresent());
+    }
+
+    @Test
+    void deleteSession_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(delete("/api/chat/sessions/{sessionId}", ownerConversation.getId()))
+                .andExpect(status().isUnauthorized());
     }
 }

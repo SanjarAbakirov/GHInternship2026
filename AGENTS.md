@@ -32,11 +32,17 @@
     - Новый `ConversationDetailResponse` (Conversation Detail DTO): метаданные разговора + `messageCount` + полный список `MessageResponse`. Теперь используется в `GET /api/chat/sessions/{sessionId}` вместо "голого" списка сообщений — это по пути исправило реальный баг рассинхронизации контракта (фронтенд уже ожидал объект `{ id, messages }`, а не массив).
     - Заодно исправлено рассинхронизацию имени поля `sessionId`/`chatSessionId` между фронтендом и бэкендом — оба теперь используют `conversationId`. Обновлены `chatApi.js`, `Chat.test.jsx`, `chatApi.test.js` на фронтенде.
     - Все 48 backend-тестов и 16 frontend-тестов проходят; живой E2E через curl (register→login→chat с modelName→continue→sessions→session detail) подтверждает корректность нового контракта.
+  - **AI chat feature, PHASE 4 (сервисный слой):** `ChatService` остаётся конкретным классом (без выделения `interface`, как и `UserService` — так принято во всём проекте), но его публичный контракт доработан по заданию:
+    - `chat(...)` теперь перед вызовом AI подгружает полную историю разговора из БД (`messageRepository.findByConversationIdOrderByCreatedAtAsc`, с капом `MAX_HISTORY_MESSAGES=20`) и передаёт её в AI-запрос как multi-turn контекст (роли маппятся `ai`→`assistant`, `user`→`user`), а не только последнее сообщение — реальное поведенческое улучшение, не просто рефакторинг.
+    - Добавлен `deleteConversation(username, conversationId)` — удаляет разговор с проверкой владения; сообщения удаляются каскадно через существующие `CascadeType.ALL`/`orphanRemoval=true` на `Conversation.messages`. Подключён новый эндпоинт `DELETE /api/chat/sessions/{sessionId}` → 204/404.
+    - Выделены хелперы `toMessageResponse` (entity→DTO) и `capHistory` (ограничение размера истории для AI-запроса) — на что явно просило задание (Step 4.4).
+    - `listSessions`/`getConversationDetail`/`getChatReply` — уже соответствовали спецификации Step 4.5/4.6 благодаря Phase 3, не менялись структурно.
+    - Все 57 backend-тестов (было 48, +9 новых: multi-turn контекст с проверкой ролей в теле AI-запроса, удаление владельцем/не-владельцем, каскадное удаление сообщений через реальную H2-интеграцию) проходят; живой E2E через curl (2 хода в одном разговоре → GET detail с 4 сообщениями → DELETE 204 → GET 404 → пустой список) подтверждает корректность.
 ## Планы (Next Steps)
 1. Запуск PostgreSQL контейнера через Docker Desktop при необходимости на стороне разработчика.
 2. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
 3. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
-4. Дальнейшие фазы фичи AI-чата (Phase 1–3 выполнены; уточнить у пользователя содержание Phase 4+, вероятно — обновление сервисного/контроллерного слоя под новые DTO, что уже частично сделано в рамках Phase 3).
+4. Дальнейшие фазы фичи AI-чата (Phase 1–4 выполнены; фронтенд пока не использует `DELETE /api/chat/sessions/{id}` — можно добавить кнопку удаления разговора в `ConversationSidebar`, если это часть следующей фазы).
 
 
 
