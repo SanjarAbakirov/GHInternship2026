@@ -38,11 +38,12 @@
     - Выделены хелперы `toMessageResponse` (entity→DTO) и `capHistory` (ограничение размера истории для AI-запроса) — на что явно просило задание (Step 4.4).
     - `listSessions`/`getConversationDetail`/`getChatReply` — уже соответствовали спецификации Step 4.5/4.6 благодаря Phase 3, не менялись структурно.
     - Все 57 backend-тестов (было 48, +9 новых: multi-turn контекст с проверкой ролей в теле AI-запроса, удаление владельцем/не-владельцем, каскадное удаление сообщений через реальную H2-интеграцию) проходят; живой E2E через curl (2 хода в одном разговоре → GET detail с 4 сообщениями → DELETE 204 → GET 404 → пустой список) подтверждает корректность.
+  - **AI chat feature, PHASE 5 (контроллеры):** Все 4 эндпоинта (`POST /api/chat`, `GET /api/chat/sessions`, `GET /api/chat/sessions/{id}`, `DELETE /api/chat/sessions/{id}`) уже существовали по итогам Phase 3–4; для Phase 5 добавлен единый приватный хелпер `ChatController.getAuthenticatedUsername()`, читающий имя пользователя из `SecurityContextHolder.getContext().getAuthentication()` вместо повторяющегося параметра `Authentication authentication` в каждом методе. `JwtAuthenticationFilter` уже кладёт `Authentication` в security context до вызова контроллера, а `SecurityConfig` требует аутентификацию для всех `/api/chat/**` — так что хелпер безопасен (никогда не увидит `null`) и работает одинаково в проде и в MockMvc-тестах. Обработка ошибок (`ResourceNotFoundException` → 404 через `GlobalExceptionHandler`) не менялась — уже покрывала both not-found/not-owned случаи. Все 57 тестов проходят; живой E2E (без токена → 401, с токеном → chat/list/detail/delete работают) подтверждает корректность.
 ## Планы (Next Steps)
 1. Запуск PostgreSQL контейнера через Docker Desktop при необходимости на стороне разработчика.
 2. Реализовать генерацию `correlationId` (MDC) на старте каждого запроса для полноценной трассировки.
 3. Подготовить проект к развертыванию (настройка CI/CD, Dockerfile и т.д.).
-4. Дальнейшие фазы фичи AI-чата (Phase 1–4 выполнены; фронтенд пока не использует `DELETE /api/chat/sessions/{id}` — можно добавить кнопку удаления разговора в `ConversationSidebar`, если это часть следующей фазы).
+4. Дальнейшие фазы фичи AI-чата (Phase 1–5 выполнены; фронтенд пока не использует `DELETE /api/chat/sessions/{id}` — можно добавить кнопку удаления разговора в `ConversationSidebar`, если это часть следующей фазы).
 
 
 
