@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import com.example.demo.dto.ConversationDetailResponse;
 import com.example.demo.dto.ConversationResponse;
 import com.example.demo.exception.ConversationNotFoundException;
 import com.example.demo.exception.UnauthorizedConversationAccessException;
+import com.example.demo.exception.UserNotFoundException;
 import com.example.demo.model.Conversation;
 import com.example.demo.model.Message;
 import com.example.demo.model.User;
@@ -197,6 +199,84 @@ public class ChatServiceTest {
     }
 
     @Test
+    public void chat_throwsUserNotFoundWhenUsernameUnknown() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class,
+                () -> chatService.chat("ghost", "Hello", null, null));
+    }
+
+    @Test
+    public void chat_blankMessageProducesDefaultConversationTitle() {
+        stubAiReply("Hello from AI");
+
+        when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> {
+            Conversation conversation = invocation.getArgument(0);
+            conversation.setId(12L);
+            return conversation;
+        });
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(12L))
+                .thenReturn(List.of(new Message("   ", Message.ROLE_USER)));
+
+        ChatResponse response = chatService.chat("testuser", "   ", null, null);
+
+        assertEquals("New chat", response.getConversationTitle());
+    }
+
+    @Test
+    public void chat_longMessageTruncatesConversationTitleTo80Characters() {
+        stubAiReply("Hello from AI");
+        String longMessage = "A".repeat(120);
+
+        when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> {
+            Conversation conversation = invocation.getArgument(0);
+            conversation.setId(13L);
+            return conversation;
+        });
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(13L))
+                .thenReturn(List.of(new Message(longMessage, Message.ROLE_USER)));
+
+        ChatResponse response = chatService.chat("testuser", longMessage, null, null);
+
+        assertEquals(80, response.getConversationTitle().length());
+        assertTrue(response.getConversationTitle().endsWith("..."));
+        assertEquals("A".repeat(77) + "...", response.getConversationTitle());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void chat_capsHistorySentToAiToMostRecentTwentyMessages() {
+        stubAiReply("Follow-up reply");
+
+        Conversation existing = new Conversation("Existing", testUser);
+        existing.setId(22L);
+        when(conversationRepository.findById(22L)).thenReturn(Optional.of(existing));
+        when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // 25 stored messages; ChatService should only forward the most recent 20 to the AI.
+        List<Message> fullHistory = new java.util.ArrayList<>();
+        for (int i = 0; i < 25; i++) {
+            fullHistory.add(new Message("message-" + i, Message.ROLE_USER));
+        }
+        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(22L)).thenReturn(fullHistory);
+
+        chatService.chat("testuser", "message-24", 22L, null);
+
+        ArgumentCaptor<HttpEntity<Map<String, Object>>> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplateMock).postForEntity(
+                ArgumentMatchers.eq("http://test.api.url"), entityCaptor.capture(), ArgumentMatchers.eq(Map.class));
+
+        List<Map<String, Object>> sentMessages =
+                (List<Map<String, Object>>) entityCaptor.getValue().getBody().get("messages");
+        assertEquals(20, sentMessages.size());
+        assertEquals("message-5", sentMessages.get(0).get("content"));
+        assertEquals("message-24", sentMessages.get(19).get("content"));
+    }
+
+    @Test
     public void chat_usesModelNameOverrideWhenCreatingNewConversation() {
         stubAiReply("Hello from AI");
 
@@ -239,6 +319,31 @@ public class ChatServiceTest {
         assertEquals("Second", sessions.get(0).getTitle());
         assertEquals(1L, sessions.get(1).getId());
         assertEquals(2L, sessions.get(1).getMessageCount());
+    }
+
+    @Test
+    public void listSessions_truncatesLongLastMessagePreview() {
+        Conversation conversation = new Conversation("Chatty", testUser);
+        conversation.setId(1L);
+
+        when(conversationRepository.findByUserIdOrderByUpdatedAtDesc(1L))
+                .thenReturn(List.of(conversation));
+        when(messageRepository.countByConversationId(1L)).thenReturn(1L);
+        String longContent = "B".repeat(120);
+        when(messageRepository.findFirstByConversationIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(new Message(longContent, Message.ROLE_AI)));
+
+        List<ConversationResponse> sessions = chatService.listSessions("testuser");
+
+        assertEquals(80, sessions.get(0).getLastMessagePreview().length());
+        assertTrue(sessions.get(0).getLastMessagePreview().endsWith("..."));
+    }
+
+    @Test
+    public void listSessions_throwsUserNotFoundWhenUsernameUnknown() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> chatService.listSessions("ghost"));
     }
 
     @Test
@@ -291,6 +396,14 @@ public class ChatServiceTest {
     }
 
     @Test
+    public void getConversationDetail_throwsUserNotFoundWhenUsernameUnknown() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class,
+                () -> chatService.getConversationDetail("ghost", 7L));
+    }
+
+    @Test
     public void deleteConversation_deletesOwnedConversation() {
         Conversation existing = new Conversation("Existing", testUser);
         existing.setId(22L);
@@ -319,6 +432,14 @@ public class ChatServiceTest {
 
         assertThrows(UnauthorizedConversationAccessException.class,
                 () -> chatService.deleteConversation("testuser", 99L));
+    }
+
+    @Test
+    public void deleteConversation_throwsUserNotFoundWhenUsernameUnknown() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class,
+                () -> chatService.deleteConversation("ghost", 22L));
     }
 
     @Test
