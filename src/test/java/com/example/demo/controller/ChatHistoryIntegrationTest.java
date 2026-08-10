@@ -115,10 +115,18 @@ class ChatHistoryIntegrationTest {
     }
 
     @Test
-    void getSessionMessages_otherUsersSession_returns404() throws Exception {
-        mockMvc.perform(get("/api/chat/sessions/{sessionId}", otherConversation.getId())
+    void getSessionMessages_missingConversation_returns404() throws Exception {
+        long missingId = otherConversation.getId() + 10_000;
+        mockMvc.perform(get("/api/chat/sessions/{sessionId}", missingId)
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getSessionMessages_otherUsersSession_returns403() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions/{sessionId}", otherConversation.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -135,10 +143,18 @@ class ChatHistoryIntegrationTest {
     }
 
     @Test
-    void deleteSession_otherUsersSession_returns404AndDoesNotDelete() throws Exception {
-        mockMvc.perform(delete("/api/chat/sessions/{sessionId}", otherConversation.getId())
+    void deleteSession_missingConversation_returns404() throws Exception {
+        long missingId = otherConversation.getId() + 10_000;
+        mockMvc.perform(delete("/api/chat/sessions/{sessionId}", missingId)
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteSession_otherUsersSession_returns403AndDoesNotDelete() throws Exception {
+        mockMvc.perform(delete("/api/chat/sessions/{sessionId}", otherConversation.getId())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isForbidden());
 
         assertTrue(conversationRepository.findByIdAndUserId(otherConversation.getId(), otherUser.getId()).isPresent());
     }

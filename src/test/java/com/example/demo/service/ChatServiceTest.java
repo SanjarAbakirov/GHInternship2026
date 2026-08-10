@@ -9,7 +9,8 @@ import static org.mockito.Mockito.when;
 import com.example.demo.dto.ChatResponse;
 import com.example.demo.dto.ConversationDetailResponse;
 import com.example.demo.dto.ConversationResponse;
-import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.exception.ConversationNotFoundException;
+import com.example.demo.exception.UnauthorizedConversationAccessException;
 import com.example.demo.model.Conversation;
 import com.example.demo.model.Message;
 import com.example.demo.model.User;
@@ -114,7 +115,7 @@ public class ChatServiceTest {
 
         Conversation existing = new Conversation("Existing", testUser);
         existing.setId(22L);
-        when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
+        when(conversationRepository.findById(22L)).thenReturn(Optional.of(existing));
         when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageRepository.findByConversationIdOrderByCreatedAtAsc(22L))
@@ -149,7 +150,7 @@ public class ChatServiceTest {
 
         Conversation existing = new Conversation("Existing", testUser);
         existing.setId(22L);
-        when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
+        when(conversationRepository.findById(22L)).thenReturn(Optional.of(existing));
         when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageRepository.findByConversationIdOrderByCreatedAtAsc(22L))
@@ -176,10 +177,22 @@ public class ChatServiceTest {
     }
 
     @Test
-    public void chat_throwsWhenConversationMissingOrNotOwned() {
-        when(conversationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+    public void chat_throwsWhenConversationMissing() {
+        when(conversationRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class,
+        assertThrows(ConversationNotFoundException.class,
+                () -> chatService.chat("testuser", "Hello", 99L, null));
+    }
+
+    @Test
+    public void chat_throwsWhenConversationNotOwned() {
+        User otherUser = new User("otheruser", "other@example.com", "password");
+        otherUser.setId(2L);
+        Conversation othersConversation = new Conversation("Not yours", otherUser);
+        othersConversation.setId(99L);
+        when(conversationRepository.findById(99L)).thenReturn(Optional.of(othersConversation));
+
+        assertThrows(UnauthorizedConversationAccessException.class,
                 () -> chatService.chat("testuser", "Hello", 99L, null));
     }
 
@@ -234,7 +247,7 @@ public class ChatServiceTest {
         conversation.setId(7L);
         conversation.setCreatedAt(LocalDateTime.of(2026, 1, 1, 12, 0));
         conversation.setUpdatedAt(LocalDateTime.of(2026, 1, 1, 12, 1));
-        when(conversationRepository.findByIdAndUserId(7L, 1L)).thenReturn(Optional.of(conversation));
+        when(conversationRepository.findById(7L)).thenReturn(Optional.of(conversation));
 
         Message userMsg = new Message("Hi", Message.ROLE_USER, conversation);
         userMsg.setId(100L);
@@ -258,10 +271,22 @@ public class ChatServiceTest {
     }
 
     @Test
-    public void getConversationDetail_throwsWhenConversationNotOwned() {
-        when(conversationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+    public void getConversationDetail_throwsWhenConversationMissing() {
+        when(conversationRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class,
+        assertThrows(ConversationNotFoundException.class,
+                () -> chatService.getConversationDetail("testuser", 99L));
+    }
+
+    @Test
+    public void getConversationDetail_throwsWhenConversationNotOwned() {
+        User otherUser = new User("otheruser", "other@example.com", "password");
+        otherUser.setId(2L);
+        Conversation othersConversation = new Conversation("Not yours", otherUser);
+        othersConversation.setId(99L);
+        when(conversationRepository.findById(99L)).thenReturn(Optional.of(othersConversation));
+
+        assertThrows(UnauthorizedConversationAccessException.class,
                 () -> chatService.getConversationDetail("testuser", 99L));
     }
 
@@ -269,7 +294,7 @@ public class ChatServiceTest {
     public void deleteConversation_deletesOwnedConversation() {
         Conversation existing = new Conversation("Existing", testUser);
         existing.setId(22L);
-        when(conversationRepository.findByIdAndUserId(22L, 1L)).thenReturn(Optional.of(existing));
+        when(conversationRepository.findById(22L)).thenReturn(Optional.of(existing));
 
         chatService.deleteConversation("testuser", 22L);
 
@@ -277,10 +302,22 @@ public class ChatServiceTest {
     }
 
     @Test
-    public void deleteConversation_throwsWhenConversationNotOwned() {
-        when(conversationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+    public void deleteConversation_throwsWhenConversationMissing() {
+        when(conversationRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class,
+        assertThrows(ConversationNotFoundException.class,
+                () -> chatService.deleteConversation("testuser", 99L));
+    }
+
+    @Test
+    public void deleteConversation_throwsWhenConversationNotOwned() {
+        User otherUser = new User("otheruser", "other@example.com", "password");
+        otherUser.setId(2L);
+        Conversation othersConversation = new Conversation("Not yours", otherUser);
+        othersConversation.setId(99L);
+        when(conversationRepository.findById(99L)).thenReturn(Optional.of(othersConversation));
+
+        assertThrows(UnauthorizedConversationAccessException.class,
                 () -> chatService.deleteConversation("testuser", 99L));
     }
 

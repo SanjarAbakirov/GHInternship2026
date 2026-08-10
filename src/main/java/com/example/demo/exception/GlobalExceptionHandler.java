@@ -36,8 +36,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<AuthResponse> handleResourceNotFound(ResourceNotFoundException ex) {
+    // Разговор с таким id не существует вовсе
+    @ExceptionHandler(ConversationNotFoundException.class)
+    public ResponseEntity<AuthResponse> handleConversationNotFound(ConversationNotFoundException ex) {
+        AuthResponse response = new AuthResponse(false, ex.getMessage(), null, null);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    // Разговор существует, но принадлежит другому пользователю
+    @ExceptionHandler(UnauthorizedConversationAccessException.class)
+    public ResponseEntity<AuthResponse> handleUnauthorizedConversationAccess(
+            UnauthorizedConversationAccessException ex) {
+        AuthResponse response = new AuthResponse(false, ex.getMessage(), null, null);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    // Аутентифицированный пользователь не найден в базе (например, удалён после выдачи токена)
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<AuthResponse> handleUserNotFound(UserNotFoundException ex) {
         AuthResponse response = new AuthResponse(false, ex.getMessage(), null, null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }

@@ -4,7 +4,9 @@ import com.example.demo.dto.ChatResponse;
 import com.example.demo.dto.ConversationDetailResponse;
 import com.example.demo.dto.ConversationResponse;
 import com.example.demo.dto.MessageResponse;
-import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.exception.ConversationNotFoundException;
+import com.example.demo.exception.UnauthorizedConversationAccessException;
+import com.example.demo.exception.UserNotFoundException;
 import com.example.demo.model.Conversation;
 import com.example.demo.model.Message;
 import com.example.demo.model.User;
@@ -114,14 +116,13 @@ public class ChatService {
     /**
      * Returns conversation metadata plus the full ordered message list, for a conversation
      * owned by the authenticated user.
-     * Throws {@link ResourceNotFoundException} if the conversation is missing or belongs to someone else.
+     * Throws {@link ConversationNotFoundException} if no such conversation exists, or
+     * {@link UnauthorizedConversationAccessException} if it belongs to someone else.
      */
     @Transactional(readOnly = true)
     public ConversationDetailResponse getConversationDetail(String username, Long conversationId) {
         User user = requireUser(username);
-        Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conversation not found or not owned by user: " + conversationId));
+        Conversation conversation = requireOwnedConversation(conversationId, user);
 
         List<MessageResponse> messages =
                 messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId()).stream()
@@ -140,13 +141,12 @@ public class ChatService {
     /**
      * Deletes a conversation (and, via cascade + orphanRemoval on {@link Conversation#getMessages()},
      * all of its messages) owned by the authenticated user.
-     * Throws {@link ResourceNotFoundException} if the conversation is missing or belongs to someone else.
+     * Throws {@link ConversationNotFoundException} if no such conversation exists, or
+     * {@link UnauthorizedConversationAccessException} if it belongs to someone else.
      */
     public void deleteConversation(String username, Long conversationId) {
         User user = requireUser(username);
-        Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conversation not found or not owned by user: " + conversationId));
+        Conversation conversation = requireOwnedConversation(conversationId, user);
 
         conversationRepository.delete(conversation);
         log.info("Deleted conversation {} for user {}", conversationId, user.getUsername());
@@ -154,7 +154,7 @@ public class ChatService {
 
     private User requireUser(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + username));
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
     }
 
     private Conversation resolveConversation(
@@ -169,9 +169,24 @@ public class ChatService {
             return created;
         }
 
-        return conversationRepository.findByIdAndUserId(conversationId, user.getId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conversation not found or not owned by user: " + conversationId));
+        return requireOwnedConversation(conversationId, user);
+    }
+
+    /**
+     * Loads a conversation by id and verifies it belongs to {@code user}, distinguishing "doesn't
+     * exist" from "exists but isn't yours" so callers can return the right HTTP status (404 vs 403).
+     */
+    private Conversation requireOwnedConversation(Long conversationId, User user) {
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ConversationNotFoundException(
+                        "Conversation not found: " + conversationId));
+
+        if (!conversation.getUser().getId().equals(user.getId())) {
+            throw new UnauthorizedConversationAccessException(
+                    "User " + user.getUsername() + " is not authorized to access conversation " + conversationId);
+        }
+
+        return conversation;
     }
 
     /**

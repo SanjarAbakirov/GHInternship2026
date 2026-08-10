@@ -5,7 +5,8 @@ import com.example.demo.dto.ChatResponse;
 import com.example.demo.dto.ConversationDetailResponse;
 import com.example.demo.dto.ConversationResponse;
 import com.example.demo.dto.MessageResponse;
-import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.exception.ConversationNotFoundException;
+import com.example.demo.exception.UnauthorizedConversationAccessException;
 import com.example.demo.security.JwtAuthenticationFilter;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.ChatService;
@@ -150,15 +151,28 @@ class ChatControllerTest {
     }
 
     @Test
-    void getSessionMessages_whenNotOwned_returns404() throws Exception {
+    void getSessionMessages_whenConversationMissing_returns404() throws Exception {
         Mockito.when(chatService.getConversationDetail("testuser", 99L))
-                .thenThrow(new ResourceNotFoundException("Conversation not found or not owned by user: 99"));
+                .thenThrow(new ConversationNotFoundException("Conversation not found: 99"));
 
         String token = jwtUtil.generateToken("testuser");
 
         mockMvc.perform(get("/api/chat/sessions/99")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getSessionMessages_whenNotOwned_returns403() throws Exception {
+        Mockito.when(chatService.getConversationDetail("testuser", 99L))
+                .thenThrow(new UnauthorizedConversationAccessException(
+                        "User testuser is not authorized to access conversation 99"));
+
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(get("/api/chat/sessions/99")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -179,8 +193,8 @@ class ChatControllerTest {
     }
 
     @Test
-    void deleteSession_whenNotOwned_returns404() throws Exception {
-        Mockito.doThrow(new ResourceNotFoundException("Conversation not found or not owned by user: 99"))
+    void deleteSession_whenConversationMissing_returns404() throws Exception {
+        Mockito.doThrow(new ConversationNotFoundException("Conversation not found: 99"))
                 .when(chatService).deleteConversation("testuser", 99L);
 
         String token = jwtUtil.generateToken("testuser");
@@ -188,6 +202,19 @@ class ChatControllerTest {
         mockMvc.perform(delete("/api/chat/sessions/99")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteSession_whenNotOwned_returns403() throws Exception {
+        Mockito.doThrow(new UnauthorizedConversationAccessException(
+                        "User testuser is not authorized to access conversation 99"))
+                .when(chatService).deleteConversation("testuser", 99L);
+
+        String token = jwtUtil.generateToken("testuser");
+
+        mockMvc.perform(delete("/api/chat/sessions/99")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
     }
 
     @Test
