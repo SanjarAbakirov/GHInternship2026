@@ -4,17 +4,6 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### Java compilled files ###
-*.class
-
-### Spring Boot specific ###
-application-local.properties
-
-*.pid
-*.spring
-spring-shell.log
-node_modules/
-
 ### STS ###
 .apt_generated
 .classpath
@@ -25,32 +14,10 @@ node_modules/
 .sts4-cache
 
 ### IntelliJ IDEA ###
-.idea/
+.idea
 *.iws
 *.iml
 *.ipr
-out/
-.idea_modules/
-.atom/
-.idea/shelf/
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/httpRequests/
-.idea/dataSources/
-.idea/dataSources.local.xml
-
-### Environment & secrets ###
-.env
-.env.local
-.env.*.local
-!.env.example
-*.pem
-*.key
-*.crt
-*.p12
-*.jks
-secrets.yml
-application-secrets.yml
 
 ### NetBeans ###
 /nbproject/private/
@@ -64,66 +31,3 @@ build/
 
 ### VS Code ###
 .vscode/
-*.code-workspace
-.history/
-
-### Mac OS ###
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-Desctop.ini
-*.swp
-*.swo
-*~
-
-### Logs & temp files ###
-logs/
-*.log
-*.tmp
-*.temp
-*.cache
-*.dump
-*.hprof
-*.heapdump
-
-### Build tools ###
-*.jar
-*.war
-*.ear
-*.nar
-*.zip
-*.tar.gz
-*.tgz
-dependency-reduced-pow.xml
-
-### Testing ###
-/coverage/
-/.coverage/
-/test-output/
-/jacoco.exec
-/surefire-reports/
-/target/surefire-reports/
-*.test-results.xml
-
-### Database ###
-*.db
-*.splite
-*.h2.db
-*.mv.db
-*.trace.db
-/hsqldb/
-/data/
-
-### Docker ###
-docker-compose.override.yml
-
-### Nide.js (for frontend) ###
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
