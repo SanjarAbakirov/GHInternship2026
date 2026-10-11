@@ -46,3 +46,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+*.class
+*.jar
