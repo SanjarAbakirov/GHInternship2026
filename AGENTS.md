@@ -17,9 +17,14 @@
    - [x] Настроен Git-репозиторий и подключен GitHub remote (`origin/main`).
    - [x] Обновлен [`.gitignore`](.gitignore) с исключениями для логов, дампов, `.env`, `.DS_Store`.
    - [x] Создан файл [`README.md`](README.md) с полным описанием проекта и инструкцией по запуску.
+   - [x] Организована базовая многослойная структура пакетов (Package-by-Layer): `controller`, `service`, `repository`, `entity`, `config`.
+   - [x] Настроена H2 in-memory база данных и H2 web console в [`application.properties`](src/main/resources/application.properties).
+   - [x] Создана JPA сущность [`User`](src/main/java/com/ghInternship/GHInternship2026/entity/User.java) (`id`, `username`, `passwordHash`).
+   - [x] Создан репозиторий [`UserRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/UserRepository.java) (`JpaRepository<User, Long>`).
+   - [x] Реализован слой бизнес-логики: [`HelloService`](src/main/java/com/ghInternship/GHInternship2026/service/HelloService.java) и [`UserService`](src/main/java/com/ghInternship/GHInternship2026/service/UserService.java).
+   - [x] Добавлены тесты: [`HelloControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/HelloControllerTest.java) и [`UserServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceTest.java).
 
 ## Следующие шаги
-- Организация базовой структуры пакетов (`entity`, `repository`, `service`).
-- Настройка H2 in-memory базы данных и H2 web console в `application.properties`.
-- Создание JPA сущности `User` (`id`, `username`, `passwordHash`).
-- Создание интерфейса `UserRepository` с наследованием от `JpaRepository<User, Long>`.
+- Расширение функционала аутентификации и регистрации пользователей (регистрация/логин, хеширование паролей BCrypt/Argon2).
+- Добавление DTO (Data Transfer Objects) и валидации входящих запросов (`spring-boot-starter-validation`).
+- Настройка полноценного UserDetailsService для интеграции с Spring Security.
