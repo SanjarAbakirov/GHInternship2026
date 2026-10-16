@@ -69,9 +69,16 @@ curl -i http://localhost:8080/hello
 src/main/java/com/ghInternship/GHInternship2026/
 ├── GhInternship2026Application.java   # Главный класс запуска Spring Boot
 ├── config/
-│   └── SecurityConfig.java            # Конфигурация Spring Security (открыт /hello)
-└── controller/
-    └── HelloController.java           # Контроллер с эндпоинтом GET /hello
+│   └── SecurityConfig.java            # Конфигурация Spring Security (открыт /hello, h2-console)
+├── controller/
+│   └── HelloController.java           # Контроллер с эндпоинтом GET /hello
+├── entity/
+│   └── User.java                      # JPA сущность пользователя
+├── repository/
+│   └── UserRepository.java            # Репозиторий доступа к данным (Spring Data JPA)
+└── service/
+    ├── HelloService.java              # Сервис бизнес-логики приветствия
+    └── UserService.java               # Сервис бизнес-логики пользователей
 ```
 
 ---
@@ -87,11 +94,13 @@ src/main/java/com/ghInternship/GHInternship2026/
 - [x] Настройка `SecurityConfig` для открытия доступа к публичным эндпоинтам.
 - [x] Размещение репозитория на GitHub.
 
-### Неделя 2: Foundation & Data Layer 🔄
+### Неделя 2: Foundation & Data Layer ✅
 - [x] Настройка Git-репозитория и ведение истории коммитов.
 - [x] Настройка `.gitignore` (исключение `target/`, `.idea/`, `.vscode/`, `*.log`, `.env`, `.DS_Store`).
 - [x] Создание документации проекта (`README.md`).
-- [ ] Базовая структура пакетов (`model` / `entity`, `repository`, `service`).
-- [ ] Настройка in-memory базы данных H2 и веб-консоли в `application.properties`.
-- [ ] Создание JPA сущности `User` (`id`, `username`, `passwordHash`).
-- [ ] Создание интерфейса `UserRepository` (`JpaRepository<User, Long>`).
+- [x] Базовая структура пакетов (`entity`, `repository`, `service`, `controller`, `config`).
+- [x] Настройка in-memory базы данных H2 и веб-консоли в `application.properties`.
+- [x] Создание JPA сущности `User` (`id`, `username`, `passwordHash`).
+- [x] Создание интерфейса `UserRepository` (`JpaRepository<User, Long>`).
+- [x] Создание сервисов `HelloService` и `UserService` с модульными тестами.
+
