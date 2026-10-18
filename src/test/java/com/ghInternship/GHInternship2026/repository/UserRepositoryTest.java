@@ -44,6 +44,33 @@ class UserRepositoryTest {
     }
 
     @Test
+    @DisplayName("Should verify user existence using existsByUsername")
+    void shouldCheckIfUserExistsByUsername() {
+        assertThat(userRepository.existsByUsername("david")).isFalse();
+
+        User user = new User("david", "hashed_pwd_789");
+        userRepository.save(user);
+
+        assertThat(userRepository.existsByUsername("david")).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should perform inherited basic CRUD operations without custom implementation")
+    void shouldPerformInheritedCrudOperations() {
+        long initialCount = userRepository.count();
+
+        User user = userRepository.save(new User("eva", "hashed_secret"));
+        assertThat(userRepository.count()).isEqualTo(initialCount + 1);
+
+        Optional<User> byId = userRepository.findById(user.getId());
+        assertThat(byId).isPresent();
+
+        userRepository.delete(user);
+        assertThat(userRepository.findById(user.getId())).isEmpty();
+        assertThat(userRepository.count()).isEqualTo(initialCount);
+    }
+
+    @Test
     @DisplayName("Should fail when saving duplicate username (unique constraint)")
     void shouldFailOnDuplicateUsername() {
         User user1 = new User("charlie", "hash1");
