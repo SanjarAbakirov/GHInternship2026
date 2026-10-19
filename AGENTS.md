@@ -23,8 +23,11 @@
    - [x] Создан репозиторий [`UserRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/UserRepository.java) (`JpaRepository<User, Long>`).
    - [x] Реализован слой бизнес-логики: [`HelloService`](src/main/java/com/ghInternship/GHInternship2026/service/HelloService.java) и [`UserService`](src/main/java/com/ghInternship/GHInternship2026/service/UserService.java).
    - [x] Добавлены тесты: [`HelloControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/HelloControllerTest.java) и [`UserServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceTest.java).
+   - [x] Настроено хэширование паролей: объявлен бин `PasswordEncoder` (`BCryptPasswordEncoder`) в [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java), внедрен в [`UserService`](src/main/java/com/ghInternship/GHInternship2026/service/UserService.java), покрыт тестами [`PasswordEncoderTest`](src/test/java/com/ghInternship/GHInternship2026/config/PasswordEncoderTest.java).
 
 ## Следующие шаги
-- Расширение функционала аутентификации и регистрации пользователей (регистрация/логин, хеширование паролей BCrypt/Argon2).
-- Добавление DTO (Data Transfer Objects) и валидации входящих запросов (`spring-boot-starter-validation`).
-- Настройка полноценного UserDetailsService для интеграции с Spring Security.
+- Создание DTO (Data Transfer Objects) для регистрации и входа пользователя (`UserRegistrationDto`).
+- Валидация входящих запросов с помощью Jakarta Validation (`@NotBlank`, `@Size`).
+- Создание контроллера `AuthController` / `UserController` с эндпоинтом `POST /register`.
+- Настройка полноценного `UserDetailsService` для интеграции с Spring Security.
+
