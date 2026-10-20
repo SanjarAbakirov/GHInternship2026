@@ -21,13 +21,16 @@
    - [x] Настроена H2 in-memory база данных и H2 web console в [`application.properties`](src/main/resources/application.properties).
    - [x] Создана JPA сущность [`User`](src/main/java/com/ghInternship/GHInternship2026/entity/User.java) (`id`, `username`, `passwordHash`).
    - [x] Создан репозиторий [`UserRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/UserRepository.java) (`JpaRepository<User, Long>`).
-   - [x] Реализован слой бизнес-логики: [`HelloService`](src/main/java/com/ghInternship/GHInternship2026/service/HelloService.java) и [`UserService`](src/main/java/com/ghInternship/GHInternship2026/service/UserService.java).
-   - [x] Добавлены тесты: [`HelloControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/HelloControllerTest.java) и [`UserServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceTest.java).
-   - [x] Настроено хэширование паролей: объявлен бин `PasswordEncoder` (`BCryptPasswordEncoder`) в [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java), внедрен в [`UserService`](src/main/java/com/ghInternship/GHInternship2026/service/UserService.java), покрыт тестами [`PasswordEncoderTest`](src/test/java/com/ghInternship/GHInternship2026/config/PasswordEncoderTest.java).
+   - [x] Реализован слой бизнес-логики: [`HelloService`](src/main/java/com/ghInternship/GHInternship2026/service/HelloService.java), выделен интерфейс [`UserService`](src/main/java/com/ghInternship/GHInternship2026/service/UserService.java) и реализация [`UserServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/UserServiceImpl.java).
+   - [x] Создан DTO [`UserRegistrationDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDto.java) (Java record) с валидацией Jakarta Validation (`@NotBlank`, `@Size`).
+   - [x] Создано доменное исключение [`UserAlreadyExistsException`](src/main/java/com/ghInternship/GHInternship2026/exception/UserAlreadyExistsException.java).
+   - [x] Настроено хэширование паролей: объявлен бин `PasswordEncoder` (`BCryptPasswordEncoder`) в [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java), внедрен в [`UserServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/UserServiceImpl.java).
+   - [x] Добавлены тесты: [`HelloControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/HelloControllerTest.java), [`UserServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceTest.java), [`PasswordEncoderTest`](src/test/java/com/ghInternship/GHInternship2026/config/PasswordEncoderTest.java) и [`UserRegistrationDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDtoTest.java).
 
 ## Следующие шаги
-- Создание DTO (Data Transfer Objects) для регистрации и входа пользователя (`UserRegistrationDto`).
-- Валидация входящих запросов с помощью Jakarta Validation (`@NotBlank`, `@Size`).
+- Создание DTO для входа/ответа пользователя (`UserResponseDto`, `UserLoginDto`).
 - Создание контроллера `AuthController` / `UserController` с эндпоинтом `POST /register`.
+- Обработка исключений через `@RestControllerAdvice` (включая маппинг `UserAlreadyExistsException` в HTTP 409 Conflict).
 - Настройка полноценного `UserDetailsService` для интеграции с Spring Security.
+
 

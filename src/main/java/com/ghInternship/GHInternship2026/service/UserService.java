@@ -1,44 +1,54 @@
 package com.ghInternship.GHInternship2026.service;
 
+import com.ghInternship.GHInternship2026.dto.UserRegistrationDto;
 import com.ghInternship.GHInternship2026.entity.User;
-import com.ghInternship.GHInternship2026.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+import com.ghInternship.GHInternship2026.exception.UserAlreadyExistsException;
 
 import java.util.Optional;
 
-@Service
-public class UserService {
+/**
+ * Интерфейс сервиса управления пользователями.
+ * Инкапсулирует основную бизнес-логику работы с пользователями: регистрация,
+ * поиск и проверка подлинности пароля.
+ */
+public interface UserService {
 
-    private static final Logger log = LoggerFactory.getLogger(UserService.class);
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    /**
+     * Регистрация нового пользователя на основе данных из DTO.
+     * Пароль хэшируется с использованием PasswordEncoder перед сохранением в БД.
+     *
+     * @param userData данные для регистрации (имя пользователя и открытый пароль)
+     * @return сохранённая сущность {@link User}
+     * @throws UserAlreadyExistsException если пользователь с таким именем уже существует
+     * @throws IllegalArgumentException если переданные данные некорректны (например, null)
+     */
+    User registerUser(UserRegistrationDto userData);
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    /**
+     * Регистрация нового пользователя по имени и открытому паролю.
+     * Обеспечивает обратную совместимость с существующим кодом.
+     *
+     * @param username имя пользователя
+     * @param rawPassword открытый пароль
+     * @return сохранённая сущность {@link User}
+     * @throws UserAlreadyExistsException если логин уже занят
+     */
+    User registerUser(String username, String rawPassword);
 
-    public Optional<User> findByUsername(String username) {
-        log.info("Searching for user with username: {}", username);
-        return userRepository.findByUsername(username);
-    }
+    /**
+     * Поиск пользователя по имени пользователя (логину).
+     *
+     * @param username имя пользователя
+     * @return {@link Optional} с пользователем, если найден, иначе {@link Optional#empty()}
+     */
+    Optional<User> findByUsername(String username);
 
-    public User registerUser(String username, String rawPassword) {
-        log.info("Registering user: {}", username);
-        if (userRepository.existsByUsername(username)) {
-            log.warn("Registration failed: username '{}' is already taken", username);
-            throw new IllegalArgumentException("Username '" + username + "' is already taken");
-        }
-        String encodedPassword = passwordEncoder.encode(rawPassword);
-        User user = new User(username, encodedPassword);
-        return userRepository.save(user);
-    }
-
-    public boolean verifyPassword(String rawPassword, String encodedPassword) {
-        return passwordEncoder.matches(rawPassword, encodedPassword);
-    }
+    /**
+     * Проверка соответствия открытого пароля сохранённому хэшу.
+     *
+     * @param rawPassword открытый пароль
+     * @param encodedPassword хэшированный пароль из БД
+     * @return {@code true}, если пароли совпадают, иначе {@code false}
+     */
+    boolean verifyPassword(String rawPassword, String encodedPassword);
 }
-
