@@ -22,15 +22,17 @@
    - [x] Создана JPA сущность [`User`](src/main/java/com/ghInternship/GHInternship2026/entity/User.java) (`id`, `username`, `passwordHash`).
    - [x] Создан репозиторий [`UserRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/UserRepository.java) (`JpaRepository<User, Long>`).
    - [x] Реализован слой бизнес-логики: [`HelloService`](src/main/java/com/ghInternship/GHInternship2026/service/HelloService.java), выделен интерфейс [`UserService`](src/main/java/com/ghInternship/GHInternship2026/service/UserService.java) и реализация [`UserServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/UserServiceImpl.java).
-   - [x] Создан DTO [`UserRegistrationDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDto.java) (Java record) с валидацией Jakarta Validation (`@NotBlank`, `@Size`).
-   - [x] Создано доменное исключение [`UserAlreadyExistsException`](src/main/java/com/ghInternship/GHInternship2026/exception/UserAlreadyExistsException.java).
-   - [x] Настроено хэширование паролей: объявлен бин `PasswordEncoder` (`BCryptPasswordEncoder`) в [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java), внедрен в [`UserServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/UserServiceImpl.java).
-   - [x] Добавлены тесты: [`HelloControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/HelloControllerTest.java), [`UserServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceTest.java), [`PasswordEncoderTest`](src/test/java/com/ghInternship/GHInternship2026/config/PasswordEncoderTest.java) и [`UserRegistrationDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDtoTest.java).
+   - [x] Созданы DTO для регистрации, аутентификации и ответов: [`UserRegistrationDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDto.java), [`UserLoginDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserLoginDto.java), [`UserResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserResponseDto.java), [`AuthResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/AuthResponseDto.java) и [`ErrorResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/ErrorResponseDto.java).
+   - [x] Создано доменное исключение [`UserAlreadyExistsException`](src/main/java/com/ghInternship/GHInternship2026/exception/UserAlreadyExistsException.java) и глобальный обработчик [`GlobalExceptionHandler`](src/main/java/com/ghInternship/GHInternship2026/exception/GlobalExceptionHandler.java) (`@RestControllerAdvice`) с маппингом в HTTP 409 Conflict и HTTP 400 Bad Request.
+   - [x] Настроено хэширование паролей: объявлен бин `PasswordEncoder` (`BCryptPasswordEncoder`) в [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java), внедрен в [`UserServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/UserServiceImpl.java) и [`AuthController`](src/main/java/com/ghInternship/GHInternship2026/controller/AuthController.java).
+   - [x] Создан [`AuthController`](src/main/java/com/ghInternship/GHInternship2026/controller/AuthController.java) с публичными эндпоинтами `POST /api/auth/register` (HTTP 201 Created) и `POST /api/auth/login` (HTTP 200 OK / HTTP 401 Unauthorized).
+   - [x] Обновлен [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java): настроен публичный доступ `permitAll()` и отключен CSRF для `/api/auth/**`.
+   - [x] Добавлены тесты: [`HelloControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/HelloControllerTest.java), [`AuthControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerTest.java), [`UserServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceTest.java), [`PasswordEncoderTest`](src/test/java/com/ghInternship/GHInternship2026/config/PasswordEncoderTest.java), [`UserRegistrationDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDtoTest.java) и [`UserLoginDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserLoginDtoTest.java).
 
 ## Следующие шаги
-- Создание DTO для входа/ответа пользователя (`UserResponseDto`, `UserLoginDto`).
-- Создание контроллера `AuthController` / `UserController` с эндпоинтом `POST /register`.
-- Обработка исключений через `@RestControllerAdvice` (включая маппинг `UserAlreadyExistsException` в HTTP 409 Conflict).
-- Настройка полноценного `UserDetailsService` для интеграции с Spring Security.
+- Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
+- Добавление `JwtAuthenticationFilter` в цепочку безопасности Spring Security.
+- Настройка `UserDetailsService` для загрузки пользователей по логину.
+
 
 

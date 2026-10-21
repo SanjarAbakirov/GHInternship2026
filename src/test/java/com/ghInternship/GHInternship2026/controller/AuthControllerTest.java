@@ -1,8 +1,5 @@
 package com.ghInternship.GHInternship2026.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ghInternship.GHInternship2026.dto.UserLoginDto;
-import com.ghInternship.GHInternship2026.dto.UserRegistrationDto;
 import com.ghInternship.GHInternship2026.entity.User;
 import com.ghInternship.GHInternship2026.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,9 +27,6 @@ class AuthControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -48,11 +42,16 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/register should successfully register a new user and return 201 Created")
     void register_ShouldReturn201_WhenDataIsValid() throws Exception {
-        UserRegistrationDto request = new UserRegistrationDto("alice", "Password123!");
+        String requestJson = """
+                {
+                    "username": "alice",
+                    "password": "Password123!"
+                }
+                """;
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(requestJson))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", notNullValue()))
                 .andExpect(jsonPath("$.username").value("alice"))
@@ -72,11 +71,16 @@ class AuthControllerTest {
         // Создаем существующего пользователя
         userRepository.save(new User("existingBob", passwordEncoder.encode("Secret123!")));
 
-        UserRegistrationDto request = new UserRegistrationDto("existingBob", "Password123!");
+        String requestJson = """
+                {
+                    "username": "existingBob",
+                    "password": "Password123!"
+                }
+                """;
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(requestJson))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.error").value("Conflict"))
@@ -87,11 +91,16 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/register should return 400 Bad Request when validation fails")
     void register_ShouldReturn400_WhenValidationFails() throws Exception {
         // Пустой логин и короткий пароль
-        UserRegistrationDto request = new UserRegistrationDto("", "123");
+        String requestJson = """
+                {
+                    "username": "",
+                    "password": "123"
+                }
+                """;
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(requestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -107,11 +116,16 @@ class AuthControllerTest {
         // Сохраняем пользователя с захэшированным паролем
         userRepository.save(new User("carol", passwordEncoder.encode("CarolPassword123!")));
 
-        UserLoginDto request = new UserLoginDto("carol", "CarolPassword123!");
+        String requestJson = """
+                {
+                    "username": "carol",
+                    "password": "CarolPassword123!"
+                }
+                """;
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(requestJson))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Login successful"));
     }
@@ -121,11 +135,16 @@ class AuthControllerTest {
     void login_ShouldReturn401_WhenPasswordIsIncorrect() throws Exception {
         userRepository.save(new User("carol", passwordEncoder.encode("CarolPassword123!")));
 
-        UserLoginDto request = new UserLoginDto("carol", "WrongPassword!");
+        String requestJson = """
+                {
+                    "username": "carol",
+                    "password": "WrongPassword!"
+                }
+                """;
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(requestJson))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid username or password"));
     }
@@ -133,11 +152,16 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/login should return 401 Unauthorized when user does not exist")
     void login_ShouldReturn401_WhenUserNotFound() throws Exception {
-        UserLoginDto request = new UserLoginDto("unknownUser", "AnyPassword123!");
+        String requestJson = """
+                {
+                    "username": "unknownUser",
+                    "password": "AnyPassword123!"
+                }
+                """;
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(requestJson))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid username or password"));
     }
@@ -145,11 +169,16 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/login should return 400 Bad Request when validation fails")
     void login_ShouldReturn400_WhenValidationFails() throws Exception {
-        UserLoginDto request = new UserLoginDto("   ", "");
+        String requestJson = """
+                {
+                    "username": "   ",
+                    "password": ""
+                }
+                """;
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(requestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
