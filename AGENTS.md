@@ -29,6 +29,8 @@
    - [x] Обновлен [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java): настроен публичный доступ `permitAll()` и отключен CSRF для `/api/auth/**`.
    - [x] Настроен и верифицирован тестовый стек Unit-тестирования в [`pom.xml`](pom.xml): явно подключен `spring-boot-starter-test` (`<scope>test</scope>`), предоставляющий JUnit 5 (Jupiter 6.0.1) и Mockito (5.20.0, `mockito-junit-jupiter`).
    - [x] Добавлены тесты: [`HelloControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/HelloControllerTest.java), модульный [`AuthControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerTest.java) (MockMvc standalone с моками Mockito), интеграционный [`AuthControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerIntegrationTest.java) (Spring Boot + MockMvc + H2), [`UserServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceTest.java), [`UserServiceImplTest`](src/test/java/com/ghInternship/GHInternship2026/service/UserServiceImplTest.java), [`PasswordEncoderTest`](src/test/java/com/ghInternship/GHInternship2026/config/PasswordEncoderTest.java), [`UserRegistrationDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDtoTest.java) и [`UserLoginDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserLoginDtoTest.java).
+   - [x] Настроен CI/CD пайплайн в [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (GitHub Actions): триггеры на `push` и `pull_request` в ветку `main`, настройка JDK 21 Temurin с кэшированием зависимостей Maven, сборка `./mvnw clean verify` и сохранение Surefire отчетов.
+
 
 
 
