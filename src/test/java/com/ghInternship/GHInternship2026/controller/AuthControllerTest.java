@@ -1,51 +1,75 @@
 package com.ghInternship.GHInternship2026.controller;
 
+import com.ghInternship.GHInternship2026.dto.UserRegistrationDto;
 import com.ghInternship.GHInternship2026.entity.User;
-import com.ghInternship.GHInternship2026.repository.UserRepository;
+import com.ghInternship.GHInternship2026.exception.GlobalExceptionHandler;
+import com.ghInternship.GHInternship2026.exception.UserAlreadyExistsException;
+import com.ghInternship.GHInternship2026.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.Optional;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+/**
+ * Изолированные модульные тесты (Unit Tests) для {@link AuthController}.
+ * Используют MockMvc (standaloneSetup) и мокируют {@link UserService} и {@link PasswordEncoder}.
+ */
+@ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+    @Mock
+    private UserService userService;
 
-    @Autowired
+    @Mock
     private PasswordEncoder passwordEncoder;
+
+    @InjectMocks
+    private AuthController authController;
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
+        mockMvc = MockMvcBuilders.standaloneSetup(authController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
     }
 
-    // --- POST /api/auth/register ---
+    // =========================================================================
+    // POST /api/auth/register tests
+    // =========================================================================
 
     @Test
-    @DisplayName("POST /api/auth/register should successfully register a new user and return 201 Created")
+    @DisplayName("POST /api/auth/register should successfully register user and return 201 Created")
     void register_ShouldReturn201_WhenDataIsValid() throws Exception {
+        User registeredUser = new User(101L, "alice", "$2a$10$mockHashedPassword");
+        when(userService.registerUser(any(UserRegistrationDto.class))).thenReturn(registeredUser);
+
         String requestJson = """
                 {
                     "username": "alice",
-                    "password": "Password123!"
+                    "password": "ValidPassword123!"
                 }
                 """;
 
@@ -53,23 +77,20 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.id").value(101))
                 .andExpect(jsonPath("$.username").value("alice"))
                 .andExpect(jsonPath("$.message").value("User registered successfully"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
 
-        // Проверяем сохранение в базе и хэширование пароля
-        User savedUser = userRepository.findByUsername("alice").orElseThrow();
-        assertThat(savedUser.getPasswordHash()).isNotEqualTo("Password123!");
-        assertThat(passwordEncoder.matches("Password123!", savedUser.getPasswordHash())).isTrue();
+        verify(userService).registerUser(any(UserRegistrationDto.class));
     }
 
     @Test
     @DisplayName("POST /api/auth/register should return 409 Conflict when username is already taken")
     void register_ShouldReturn409_WhenUsernameAlreadyExists() throws Exception {
-        // Создаем существующего пользователя
-        userRepository.save(new User("existingBob", passwordEncoder.encode("Secret123!")));
+        when(userService.registerUser(any(UserRegistrationDto.class)))
+                .thenThrow(new UserAlreadyExistsException("Username 'existingBob' is already taken"));
 
         String requestJson = """
                 {
@@ -84,14 +105,15 @@ class AuthControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.error").value("Conflict"))
-                .andExpect(jsonPath("$.message", containsString("already taken")));
+                .andExpect(jsonPath("$.message", containsString("Username 'existingBob' is already taken")));
+
+        verify(userService).registerUser(any(UserRegistrationDto.class));
     }
 
     @Test
-    @DisplayName("POST /api/auth/register should return 400 Bad Request when validation fails")
-    void register_ShouldReturn400_WhenValidationFails() throws Exception {
-        // Пустой логин и короткий пароль
-        String requestJson = """
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when input is invalid")
+    void register_ShouldReturn400_WhenInputIsInvalid() throws Exception {
+        String invalidRequestJson = """
                 {
                     "username": "",
                     "password": "123"
@@ -100,21 +122,26 @@ class AuthControllerTest {
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson))
+                        .content(invalidRequestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.validationErrors.username", notNullValue()))
                 .andExpect(jsonPath("$.validationErrors.password", notNullValue()));
+
+        verifyNoInteractions(userService);
     }
 
-    // --- POST /api/auth/login ---
+    // =========================================================================
+    // POST /api/auth/login tests
+    // =========================================================================
 
     @Test
     @DisplayName("POST /api/auth/login should return 200 OK when credentials are valid")
     void login_ShouldReturn200_WhenCredentialsAreValid() throws Exception {
-        // Сохраняем пользователя с захэшированным паролем
-        userRepository.save(new User("carol", passwordEncoder.encode("CarolPassword123!")));
+        User existingUser = new User(1L, "carol", "$2a$10$storedHashValue");
+        when(userService.findByUsername("carol")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("CarolPassword123!", "$2a$10$storedHashValue")).thenReturn(true);
 
         String requestJson = """
                 {
@@ -128,12 +155,17 @@ class AuthControllerTest {
                         .content(requestJson))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Login successful"));
+
+        verify(userService).findByUsername("carol");
+        verify(passwordEncoder).matches("CarolPassword123!", "$2a$10$storedHashValue");
     }
 
     @Test
     @DisplayName("POST /api/auth/login should return 401 Unauthorized when password is incorrect")
     void login_ShouldReturn401_WhenPasswordIsIncorrect() throws Exception {
-        userRepository.save(new User("carol", passwordEncoder.encode("CarolPassword123!")));
+        User existingUser = new User(1L, "carol", "$2a$10$storedHashValue");
+        when(userService.findByUsername("carol")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("WrongPassword!", "$2a$10$storedHashValue")).thenReturn(false);
 
         String requestJson = """
                 {
@@ -147,11 +179,16 @@ class AuthControllerTest {
                         .content(requestJson))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid username or password"));
+
+        verify(userService).findByUsername("carol");
+        verify(passwordEncoder).matches("WrongPassword!", "$2a$10$storedHashValue");
     }
 
     @Test
-    @DisplayName("POST /api/auth/login should return 401 Unauthorized when user does not exist")
-    void login_ShouldReturn401_WhenUserNotFound() throws Exception {
+    @DisplayName("POST /api/auth/login should return 401 Unauthorized when username does not exist")
+    void login_ShouldReturn401_WhenUsernameDoesNotExist() throws Exception {
+        when(userService.findByUsername("unknownUser")).thenReturn(Optional.empty());
+
         String requestJson = """
                 {
                     "username": "unknownUser",
@@ -164,12 +201,15 @@ class AuthControllerTest {
                         .content(requestJson))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid username or password"));
+
+        verify(userService).findByUsername("unknownUser");
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 
     @Test
-    @DisplayName("POST /api/auth/login should return 400 Bad Request when validation fails")
-    void login_ShouldReturn400_WhenValidationFails() throws Exception {
-        String requestJson = """
+    @DisplayName("POST /api/auth/login should return 400 Bad Request when credentials input is invalid")
+    void login_ShouldReturn400_WhenInputIsInvalid() throws Exception {
+        String invalidRequestJson = """
                 {
                     "username": "   ",
                     "password": ""
@@ -178,11 +218,14 @@ class AuthControllerTest {
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson))
+                        .content(invalidRequestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.validationErrors.username", notNullValue()))
                 .andExpect(jsonPath("$.validationErrors.password", notNullValue()));
+
+        verifyNoInteractions(userService);
+        verifyNoInteractions(passwordEncoder);
     }
 }
