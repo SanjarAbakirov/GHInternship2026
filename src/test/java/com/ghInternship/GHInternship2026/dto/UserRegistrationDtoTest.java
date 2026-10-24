@@ -32,9 +32,29 @@ class UserRegistrationDtoTest {
     }
 
     @Test
-    @DisplayName("Blank username should violate validation")
+    @DisplayName("Empty string username should violate validation")
+    void emptyUsernameShouldFail() {
+        UserRegistrationDto dto = new UserRegistrationDto("", "SecurePassword123!");
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("username"));
+    }
+
+    @Test
+    @DisplayName("Blank whitespace username should violate validation")
     void blankUsernameShouldFail() {
-        UserRegistrationDto dto = new UserRegistrationDto("  ", "SecurePassword123!");
+        UserRegistrationDto dto = new UserRegistrationDto("    ", "SecurePassword123!");
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("username"));
+    }
+
+    @Test
+    @DisplayName("Null username should violate validation")
+    void nullUsernameShouldFail() {
+        UserRegistrationDto dto = new UserRegistrationDto(null, "SecurePassword123!");
         Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
 
         assertThat(violations).isNotEmpty();
@@ -52,9 +72,29 @@ class UserRegistrationDtoTest {
     }
 
     @Test
-    @DisplayName("Blank password should violate validation")
-    void blankPasswordShouldFail() {
+    @DisplayName("Empty string password should violate validation")
+    void emptyPasswordShouldFail() {
         UserRegistrationDto dto = new UserRegistrationDto("validUser", "");
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("password"));
+    }
+
+    @Test
+    @DisplayName("Blank whitespace password should violate validation")
+    void blankPasswordShouldFail() {
+        UserRegistrationDto dto = new UserRegistrationDto("validUser", "     ");
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("password"));
+    }
+
+    @Test
+    @DisplayName("Null password should violate validation")
+    void nullPasswordShouldFail() {
+        UserRegistrationDto dto = new UserRegistrationDto("validUser", null);
         Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
 
         assertThat(violations).isNotEmpty();
@@ -68,6 +108,17 @@ class UserRegistrationDtoTest {
         Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
 
         assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("password"));
+    }
+
+    @Test
+    @DisplayName("Both fields empty should violate validation on both properties")
+    void bothFieldsEmptyShouldFail() {
+        UserRegistrationDto dto = new UserRegistrationDto("", "");
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("username"));
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("password"));
     }
 }

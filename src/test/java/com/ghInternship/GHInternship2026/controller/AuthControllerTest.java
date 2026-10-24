@@ -111,23 +111,171 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/register should return 400 Bad Request when input is invalid")
-    void register_ShouldReturn400_WhenInputIsInvalid() throws Exception {
-        String invalidRequestJson = """
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when username is empty")
+    void register_ShouldReturn400_WhenUsernameIsEmpty() throws Exception {
+        String requestJson = """
                 {
                     "username": "",
-                    "password": "123"
+                    "password": "ValidPassword123!"
                 }
                 """;
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidRequestJson))
+                        .content(requestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.validationErrors.username", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when username is blank whitespace")
+    void register_ShouldReturn400_WhenUsernameIsBlankSpaces() throws Exception {
+        String requestJson = """
+                {
+                    "username": "   ",
+                    "password": "ValidPassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.username", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when username is null/missing")
+    void register_ShouldReturn400_WhenUsernameIsMissingOrNull() throws Exception {
+        String requestJson = """
+                {
+                    "password": "ValidPassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.username", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when password is empty")
+    void register_ShouldReturn400_WhenPasswordIsEmpty() throws Exception {
+        String requestJson = """
+                {
+                    "username": "validUser",
+                    "password": ""
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.password", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when password is blank whitespace")
+    void register_ShouldReturn400_WhenPasswordIsBlankSpaces() throws Exception {
+        String requestJson = """
+                {
+                    "username": "validUser",
+                    "password": "   "
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.password", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when password is null/missing")
+    void register_ShouldReturn400_WhenPasswordIsMissingOrNull() throws Exception {
+        String requestJson = """
+                {
+                    "username": "validUser"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.password", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when both fields are empty")
+    void register_ShouldReturn400_WhenBothFieldsAreEmpty() throws Exception {
+        String requestJson = """
+                {
+                    "username": "",
+                    "password": ""
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.validationErrors.username", notNullValue()))
                 .andExpect(jsonPath("$.validationErrors.password", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when body is empty JSON object")
+    void register_ShouldReturn400_WhenRequestBodyIsEmptyJson() throws Exception {
+        String requestJson = "{}";
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.validationErrors.username", notNullValue()))
+                .andExpect(jsonPath("$.validationErrors.password", notNullValue()));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when request body is completely missing")
+    void register_ShouldReturn400_WhenRequestBodyIsCompletelyMissing() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", containsString("missing or invalid")));
 
         verifyNoInteractions(userService);
     }
