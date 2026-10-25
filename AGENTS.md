@@ -34,14 +34,23 @@
    - [x] Настроена поддержка CORS в [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java) для интеграции с ReactJS (порты 3000 и 5173, методы `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`).
    - [x] Добавлена обработка `HttpMessageNotReadableException` в [`GlobalExceptionHandler`](src/main/java/com/ghInternship/GHInternship2026/exception/GlobalExceptionHandler.java) с возвратом HTTP 400 Bad Request при отсутствующем или невалидном теле запроса.
    - [x] Реализованы расширенные тест-кейсы для пустых и некорректных полей при регистрации (`POST /api/auth/register`) в модульных [`AuthControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerTest.java), интеграционных [`AuthControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerIntegrationTest.java) и DTO-тестах [`UserRegistrationDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDtoTest.java).
-
-
-
+   - [x] Создана директория [`frontend/`](frontend/) и инициализирован проект ReactJS на базе Vite 8 (`npm install`, React 19).
+   - [x] Разработана современная премиальная дизайн-система Dark Glassmorphism на чистом Vanilla CSS в [`index.css`](frontend/src/index.css) и [`App.css`](frontend/src/App.css) с шрифтами Inter и Outfit, фоновыми градиентными сферами, индикатором надежности пароля и тост-уведомлениями.
+   - [x] Реализован API-клиент [`api.js`](frontend/src/services/api.js) с поддержкой запросов к `POST /api/auth/register`, `POST /api/auth/login` и проверки соединения `GET /hello`.
+   - [x] Реализованы первые страницы и компоненты фронтенда:
+     - [`RegisterForm.jsx`](frontend/src/components/RegisterForm.jsx): форма регистрации с живой валидацией полей, индикатором надежности пароля и подтверждением пароля.
+     - [`LoginForm.jsx`](frontend/src/components/LoginForm.jsx): форма входа с переключением видимости пароля и опцией «Запомнить меня».
+     - [`Navbar.jsx`](frontend/src/components/Navbar.jsx): навигационная шапка с живым пульсирующим статусом доступности бэкенда Spring Boot (`http://localhost:8080`) и переключателем вкладок.
+     - [`Dashboard.jsx`](frontend/src/components/Dashboard.jsx): интерактивный личный кабинет после авторизации с профилем пользователя, статусом BCrypt хэширования, кнопкой тестирования бэкенда и кнопкой выхода.
+     - [`Notification.jsx`](frontend/src/components/Notification.jsx): всплывающие анимированные тост-уведомления об успехе или ошибках валидации/сервера.
+     - [`App.jsx`](frontend/src/App.jsx): корневой оркестратор состояний, сессии и маршрутизации представлений.
+   - [x] Проверены сборка и линтинг фронтенда (`npm run build` и `npm run lint` — 0 ошибок и 0 предупреждений) и прогон всех 71 тестов бэкенда (`./mvnw test` — SUCCESS).
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
 - Добавление `JwtAuthenticationFilter` в цепочку безопасности Spring Security.
 - Настройка `UserDetailsService` для загрузки пользователей по логину.
+- Сохранение JWT-токена в `localStorage`/`HttpOnly cookie` на фронтенде и прикрепление заголовка `Authorization: Bearer <token>` к защищенным запросам.
 
 
 
