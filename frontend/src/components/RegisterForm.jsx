@@ -51,13 +51,24 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('[RegisterForm] Сабмит формы регистрации на POST /api/auth/register');
     setTouched({ username: true, password: true, confirmPassword: true });
 
     if (!isFormValid) {
+      console.warn('[RegisterForm] Клиентская валидация не пройдена:', errors);
       return;
     }
 
-    onRegister({ username: username.trim(), password });
+    // Сопоставление с UserRegistrationDto бэкенда (username: String, password: String)
+    const registrationPayload = {
+      username: username.trim(),
+      password,
+    };
+
+    console.log(`[RegisterForm] Отправка данных UserRegistrationDto для пользователя: "${registrationPayload.username}"`);
+    if (onRegister) {
+      onRegister(registrationPayload);
+    }
   };
 
   return (
@@ -69,7 +80,14 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="auth-form" id="register-form">
+      <form
+        action="/api/auth/register"
+        method="POST"
+        onSubmit={handleSubmit}
+        noValidate
+        className="auth-form"
+        id="register-form"
+      >
         {/* Поле Имя пользователя */}
         <div className="form-group">
           <label htmlFor="register-username" className="form-label">
@@ -81,8 +99,12 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
             </svg>
             <input
               id="register-username"
+              name="username"
               type="text"
               autoComplete="username"
+              spellCheck="false"
+              autoCapitalize="none"
+              autoCorrect="off"
               className={`form-input ${touched.username && errors.username ? 'input-error' : ''}`}
               placeholder="Введите логин (от 3 до 50 символов)"
               value={username}
@@ -110,6 +132,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
             </svg>
             <input
               id="register-password"
+              name="password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               className={`form-input ${touched.password && errors.password ? 'input-error' : ''}`}
@@ -176,6 +199,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
             </svg>
             <input
               id="register-confirm-password"
+              name="confirmPassword"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               className={`form-input ${touched.confirmPassword && errors.confirmPassword ? 'input-error' : ''}`}

@@ -23,12 +23,15 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('[LoginForm] Сабмит формы входа на POST /api/auth/login');
     setTouched({ username: true, password: true });
 
     if (!isFormValid) {
+      console.warn('[LoginForm] Клиентская валидация не пройдена:', errors);
       return;
     }
 
+    console.log(`[LoginForm] Отправка данных авторизации для пользователя: "${username.trim()}"`);
     onLogin({ username: username.trim(), password, rememberMe });
   };
 
@@ -41,7 +44,14 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="auth-form" id="login-form">
+      <form
+        action="/api/auth/login"
+        method="POST"
+        onSubmit={handleSubmit}
+        noValidate
+        className="auth-form"
+        id="login-form"
+      >
         {/* Поле Имя пользователя */}
         <div className="form-group">
           <label htmlFor="login-username" className="form-label">
@@ -53,8 +63,11 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
             </svg>
             <input
               id="login-username"
+              name="username"
               type="text"
               autoComplete="username"
+              spellCheck="false"
+              autoCapitalize="none"
               className={`form-input ${touched.username && errors.username ? 'input-error' : ''}`}
               placeholder="Ваш логин"
               value={username}
@@ -84,6 +97,7 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
             </svg>
             <input
               id="login-password"
+              name="password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               className={`form-input ${touched.password && errors.password ? 'input-error' : ''}`}

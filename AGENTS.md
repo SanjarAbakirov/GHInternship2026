@@ -45,6 +45,11 @@
      - [`Notification.jsx`](frontend/src/components/Notification.jsx): всплывающие анимированные тост-уведомления об успехе или ошибках валидации/сервера.
      - [`App.jsx`](frontend/src/App.jsx): корневой оркестратор состояний, сессии и маршрутизации представлений.
    - [x] Проверены сборка и линтинг фронтенда (`npm run build` и `npm run lint` — 0 ошибок и 0 предупреждений) и прогон всех 71 тестов бэкенда (`./mvnw test` — SUCCESS).
+   - [x] Связана форма регистрации фронтенда с эндпоинтом бэкенда `POST /api/auth/register`:
+     - В [`RegisterForm.jsx`](frontend/src/components/RegisterForm.jsx) добавлены атрибуты `action="/api/auth/register"`, `method="POST"`, атрибуты `name="username"`, `name="password"`, `name="confirmPassword"`, а также поддержка `autoComplete`, `spellCheck="false"` и `autoCapitalize="none"`.
+     - Настроен обработчик `handleSubmit`, формирующий payload `{ username, password }`, в точности соответствующий Java-рекорду [`UserRegistrationDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDto.java).
+     - Добавлено подробное логирование действий пользователя и этапов отправки запроса в консоль браузера.
+     - Запущены и проверены сервисы бэкенда (`http://localhost:8080`) и фронтенда (`http://localhost:5173`): подтверждена успешная регистрация (201 Created), обнаружение конфликтов дубликатов (409 Conflict) и валидация (400 Bad Request).
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
