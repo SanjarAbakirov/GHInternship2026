@@ -280,6 +280,92 @@ class AuthControllerTest {
         verifyNoInteractions(userService);
     }
 
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when username is too short (< 3)")
+    void register_ShouldReturn400_WhenUsernameIsTooShort() throws Exception {
+        String requestJson = """
+                {
+                    "username": "ab",
+                    "password": "ValidPassword123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.validationErrors.username", containsString("between 3 and 50 characters")));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when username is too long (> 50)")
+    void register_ShouldReturn400_WhenUsernameIsTooLong() throws Exception {
+        String longUsername = "u".repeat(51);
+        String requestJson = String.format("""
+                {
+                    "username": "%s",
+                    "password": "ValidPassword123!"
+                }
+                """, longUsername);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.validationErrors.username", containsString("between 3 and 50 characters")));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when password is too short (< 6)")
+    void register_ShouldReturn400_WhenPasswordIsTooShort() throws Exception {
+        String requestJson = """
+                {
+                    "username": "validUser",
+                    "password": "12345"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.validationErrors.password", containsString("between 6 and 100 characters")));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register should return 400 Bad Request when password is too long (> 100)")
+    void register_ShouldReturn400_WhenPasswordIsTooLong() throws Exception {
+        String longPassword = "p".repeat(101);
+        String requestJson = String.format("""
+                {
+                    "username": "validUser",
+                    "password": "%s"
+                }
+                """, longPassword);
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.validationErrors.password", containsString("between 6 and 100 characters")));
+
+        verifyNoInteractions(userService);
+    }
+
     // =========================================================================
     // POST /api/auth/login tests
     // =========================================================================

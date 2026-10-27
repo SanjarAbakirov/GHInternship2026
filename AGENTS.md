@@ -51,6 +51,13 @@
      - Добавлено подробное логирование действий пользователя и этапов отправки запроса в консоль браузера.
      - Запущены и проверены сервисы бэкенда (`http://localhost:8080`) и фронтенда (`http://localhost:5173`): подтверждена успешная регистрация (201 Created), обнаружение конфликтов дубликатов (409 Conflict) и валидация (400 Bad Request).
 
+   - [x] Реализована серверная валидация Bean Validation (JSR 303/380) с `BindingResult`:
+     - В [`UserRegistrationDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDto.java) добавлены аннотации `@NotNull`, `@NotBlank`, `@Size(min = 3, max = 50)` для имени пользователя и `@NotNull`, `@NotBlank`, `@Size(min = 6, max = 100)` для пароля.
+     - В [`UserLoginDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserLoginDto.java) добавлены аннотации `@NotNull` и `@NotBlank` для полей логина.
+     - В [`AuthController`](src/main/java/com/ghInternship/GHInternship2026/controller/AuthController.java) эндпоинты `/api/auth/register` и `/api/auth/login` обновлены с параметрами `@Valid` и `BindingResult` для перехвата ошибок валидации и возврата стандартизированного HTTP 400 Bad Request с подробной картой `validationErrors`.
+     - Добавлены новые модульные тесты для проверки граничных значений длины полей (`@Size`) в [`UserRegistrationDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDtoTest.java) и [`AuthControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerTest.java) (всего 79 тестов, SUCCESS).
+     - Выполнена проверка на живом сервере: протестированы ответы 201 Created / 200 OK для корректных запросов и 400 Bad Request для невалидных данных регистрации и входа.
+
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
 - Добавление `JwtAuthenticationFilter` в цепочку безопасности Spring Security.

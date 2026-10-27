@@ -121,4 +121,46 @@ class UserRegistrationDtoTest {
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("username"));
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("password"));
     }
+
+    @Test
+    @DisplayName("Username exceeding 50 chars should violate @Size validation")
+    void usernameExceeding50CharsShouldFail() {
+        String longUsername = "a".repeat(51);
+        UserRegistrationDto dto = new UserRegistrationDto(longUsername, "ValidPassword123!");
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("username")
+                && v.getMessage().contains("between 3 and 50 characters"));
+    }
+
+    @Test
+    @DisplayName("Password exceeding 100 chars should violate @Size validation")
+    void passwordExceeding100CharsShouldFail() {
+        String longPassword = "p".repeat(101);
+        UserRegistrationDto dto = new UserRegistrationDto("validUser", longPassword);
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isNotEmpty();
+        assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("password")
+                && v.getMessage().contains("between 6 and 100 characters"));
+    }
+
+    @Test
+    @DisplayName("Boundary valid lengths (3 chars for username, 6 chars for password) should pass")
+    void boundaryMinValidLengthsShouldPass() {
+        UserRegistrationDto dto = new UserRegistrationDto("abc", "123456");
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Boundary valid max lengths (50 chars for username, 100 chars for password) should pass")
+    void boundaryMaxValidLengthsShouldPass() {
+        UserRegistrationDto dto = new UserRegistrationDto("u".repeat(50), "p".repeat(100));
+        Set<ConstraintViolation<UserRegistrationDto>> violations = validator.validate(dto);
+
+        assertThat(violations).isEmpty();
+    }
 }
