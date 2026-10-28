@@ -17,8 +17,8 @@ async function handleResponse(response) {
     let errorDetails = null;
 
     if (typeof data === 'object' && data !== null) {
-      errorMessage = data.error || data.message || `Ошибка сервера (${response.status})`;
-      errorDetails = data.details || null;
+      errorMessage = data.message || data.error || `Ошибка сервера (${response.status})`;
+      errorDetails = data.validationErrors || data.details || null;
     } else if (typeof data === 'string' && data.length > 0) {
       errorMessage = data;
     }
@@ -26,6 +26,9 @@ async function handleResponse(response) {
     const error = new Error(errorMessage);
     error.status = response.status;
     error.details = errorDetails;
+    error.validationErrors = (typeof data === 'object' && data !== null) ? (data.validationErrors || null) : null;
+    error.raw = data;
+    console.error(`[API] Ошибка запроса (${response.status}):`, errorMessage, errorDetails || '');
     throw error;
   }
 

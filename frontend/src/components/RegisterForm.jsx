@@ -9,6 +9,8 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState({ username: false, password: false, confirmPassword: false });
+  const [serverErrors, setServerErrors] = useState({});
+  const [serverGeneralError, setServerGeneralError] = useState('');
 
   // Клиентская валидация
   const errors = {};
@@ -24,6 +26,8 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
     errors.password = 'Пароль обязателен для заполнения';
   } else if (password.length < 6) {
     errors.password = 'Пароль должен содержать как минимум 6 символов';
+  } else if (password.length > 100) {
+    errors.password = 'Пароль не должен превышать 100 символов';
   }
 
   if (password && confirmPassword && password !== confirmPassword) {
@@ -31,6 +35,11 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
   }
 
   const isFormValid = Object.keys(errors).length === 0 && confirmPassword.length > 0;
+
+  // Итоговые ошибки (клиентские или серверные ошибки валидации)
+  const usernameError = (touched.username && errors.username) || serverErrors.username;
+  const passwordError = (touched.password && errors.password) || serverErrors.password;
+  const confirmPasswordError = touched.confirmPassword && errors.confirmPassword;
 
   // Расчет надежности пароля
   const calculatePasswordStrength = (pass) => {
@@ -49,10 +58,12 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
 
   const strength = calculatePasswordStrength(password);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     console.log('[RegisterForm] Сабмит формы регистрации на POST /api/auth/register');
     setTouched({ username: true, password: true, confirmPassword: true });
+    setServerErrors({});
+    setServerGeneralError('');
 
     if (!isFormValid) {
       console.warn('[RegisterForm] Клиентская валидация не пройдена:', errors);
@@ -67,7 +78,19 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
 
     console.log(`[RegisterForm] Отправка данных UserRegistrationDto для пользователя: "${registrationPayload.username}"`);
     if (onRegister) {
-      onRegister(registrationPayload);
+      const result = await onRegister(registrationPayload);
+      if (result && !result.success) {
+        console.warn('[RegisterForm] Получены ошибки от бэкенда:', result);
+        if (result.validationErrors && Object.keys(result.validationErrors).length > 0) {
+          setServerErrors(result.validationErrors);
+          setServerGeneralError(result.message || 'Ошибка валидации данных на сервере (400)');
+        } else if (result.status === 409) {
+          setServerErrors({ username: result.message || 'Данное имя пользователя уже занято' });
+          setServerGeneralError(result.message || 'Пользователь с таким именем уже существует');
+        } else if (result.message) {
+          setServerGeneralError(result.message);
+        }
+      }
     }
   };
 
@@ -79,6 +102,19 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
           Зарегистрируйтесь для доступа к защищенным ресурсам платформы GHInternship
         </p>
       </div>
+
+      {/* Баннер ошибки бэкенда */}
+      {serverGeneralError && (
+        <div className="server-alert server-alert-error" role="alert" id="register-server-error">
+          <svg className="server-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div className="server-alert-content">
+            <div className="server-alert-title">Ошибка сервера</div>
+            <p className="server-alert-message">{serverGeneralError}</p>
+          </div>
+        </div>
+      )}
 
       <form
         action="/api/auth/register"
@@ -105,18 +141,30 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
               spellCheck="false"
               autoCapitalize="none"
               autoCorrect="off"
-              className={`form-input ${touched.username && errors.username ? 'input-error' : ''}`}
+              className={`form-input ${usernameError ? 'input-error' : ''}`}
               placeholder="Введите логин (от 3 до 50 символов)"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (serverErrors.username) {
+                  setServerErrors((prev) => ({ ...prev, username: null }));
+                }
+              }}
               onBlur={() => setTouched((prev) => ({ ...prev, username: true }))}
               disabled={isLoading}
+              aria-invalid={usernameError ? 'true' : 'false'}
+              aria-describedby={usernameError ? 'register-username-error' : undefined}
               required
             />
           </div>
-          {touched.username && errors.username && (
-            <span className="field-error-text" id="register-username-error">
-              {errors.username}
+          {usernameError && (
+            <span className="field-error-text" id="register-username-error" role="alert">
+              <svg className="error-small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {usernameError}
             </span>
           )}
         </div>
@@ -135,12 +183,19 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
               name="password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
-              className={`form-input ${touched.password && errors.password ? 'input-error' : ''}`}
+              className={`form-input ${passwordError ? 'input-error' : ''}`}
               placeholder="Минимум 6 символов"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (serverErrors.password) {
+                  setServerErrors((prev) => ({ ...prev, password: null }));
+                }
+              }}
               onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
               disabled={isLoading}
+              aria-invalid={passwordError ? 'true' : 'false'}
+              aria-describedby={passwordError ? 'register-password-error' : undefined}
               required
             />
             <button
@@ -152,9 +207,14 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
               {showPassword ? 'Скрыть' : 'Показать'}
             </button>
           </div>
-          {touched.password && errors.password && (
-            <span className="field-error-text" id="register-password-error">
-              {errors.password}
+          {passwordError && (
+            <span className="field-error-text" id="register-password-error" role="alert">
+              <svg className="error-small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {passwordError}
             </span>
           )}
 
@@ -202,17 +262,24 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
               name="confirmPassword"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
-              className={`form-input ${touched.confirmPassword && errors.confirmPassword ? 'input-error' : ''}`}
+              className={`form-input ${confirmPasswordError ? 'input-error' : ''}`}
               placeholder="Повторите введенный пароль"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               onBlur={() => setTouched((prev) => ({ ...prev, confirmPassword: true }))}
               disabled={isLoading}
+              aria-invalid={confirmPasswordError ? 'true' : 'false'}
+              aria-describedby={confirmPasswordError ? 'register-confirm-password-error' : undefined}
               required
             />
           </div>
-          {touched.confirmPassword && errors.confirmPassword && (
-            <span className="field-error-text" id="register-confirm-password-error">
+          {confirmPasswordError && (
+            <span className="field-error-text" id="register-confirm-password-error" role="alert">
+              <svg className="error-small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
               {errors.confirmPassword}
             </span>
           )}

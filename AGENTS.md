@@ -56,7 +56,14 @@
      - В [`UserLoginDto`](src/main/java/com/ghInternship/GHInternship2026/dto/UserLoginDto.java) добавлены аннотации `@NotNull` и `@NotBlank` для полей логина.
      - В [`AuthController`](src/main/java/com/ghInternship/GHInternship2026/controller/AuthController.java) эндпоинты `/api/auth/register` и `/api/auth/login` обновлены с параметрами `@Valid` и `BindingResult` для перехвата ошибок валидации и возврата стандартизированного HTTP 400 Bad Request с подробной картой `validationErrors`.
      - Добавлены новые модульные тесты для проверки граничных значений длины полей (`@Size`) в [`UserRegistrationDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/UserRegistrationDtoTest.java) и [`AuthControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerTest.java) (всего 79 тестов, SUCCESS).
-     - Выполнена проверка на живом сервере: протестированы ответы 201 Created / 200 OK для корректных запросов и 400 Bad Request для невалидных данных регистрации и входа.
+   - [x] Реализовано отображение серверных ошибок валидации на фронтенде (Display Backend Validation Errors on Frontend):
+     - В [`api.js`](frontend/src/services/api.js) доработан перехватчик `handleResponse`: извлекаются `validationErrors` и приоритетно транслируются понятные сообщения об ошибках от бэкенда (`message` вместо абстрактного `error`).
+     - В [`App.jsx`](frontend/src/App.jsx) обновлены обработчики `handleRegister` и `handleLogin`: возвращаются структурированные результаты со статусом, сообщением и картой `validationErrors`, а тост-уведомления адаптируют заголовок под тип ошибки (HTTP 400 Bad Request, 401 Unauthorized, 409 Conflict).
+     - В [`RegisterForm.jsx`](frontend/src/components/RegisterForm.jsx) и [`LoginForm.jsx`](frontend/src/components/LoginForm.jsx) добавлено локальное состояние `serverErrors` и `serverGeneralError`:
+       - Отображение баннера ошибки сервера `.server-alert` с иконкой и текстом.
+       - Подсветка конкретных полей (`.input-error`, `aria-invalid="true"`) и вывод точного текста валидации под каждым проблемным полем (`<span className="field-error-text">`).
+       - Автоматический сброс серверной ошибки конкретного поля при начале нового ввода пользователем.
+     - В [`App.css`](frontend/src/App.css) добавлены стили для `.server-alert`, `.server-alert-error`, `.server-alert-icon`, `.error-small-icon` в стилистике Dark Glassmorphism.
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.

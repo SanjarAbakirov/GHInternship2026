@@ -65,14 +65,31 @@ export default function App() {
         message: `Пользователь "${result.username || username}" успешно создан. Теперь вы можете войти в систему.`,
       });
       setActiveTab('login');
+      return { success: true, data: result };
     } catch (err) {
       console.error('[App] Ошибка при регистрации:', err);
+      const validationErrors = err.validationErrors || err.details || null;
+      let title = 'Ошибка регистрации';
+      if (err.status === 400) {
+        title = 'Ошибка валидации данных (400)';
+      } else if (err.status === 409) {
+        title = 'Конфликт: пользователь уже существует (409)';
+      }
+
       setNotification({
         type: 'error',
-        title: 'Ошибка регистрации',
+        title,
         message: err.message,
-        details: err.details,
+        details: validationErrors,
       });
+
+      return {
+        success: false,
+        error: err,
+        status: err.status,
+        message: err.message,
+        validationErrors,
+      };
     } finally {
       setIsLoading(false);
     }
@@ -98,14 +115,31 @@ export default function App() {
         title: 'Успешная авторизация',
         message: `Добро пожаловать в систему, ${user.username}!`,
       });
+      return { success: true, data: result };
     } catch (err) {
       console.error('[App] Ошибка при входе:', err);
+      const validationErrors = err.validationErrors || err.details || null;
+      let title = 'Ошибка авторизации';
+      if (err.status === 400) {
+        title = 'Ошибка валидации данных (400)';
+      } else if (err.status === 401) {
+        title = 'Неверные учетные данные (401)';
+      }
+
       setNotification({
         type: 'error',
-        title: 'Ошибка авторизации',
+        title,
         message: err.message || 'Неверное имя пользователя или пароль',
-        details: err.details,
+        details: validationErrors,
       });
+
+      return {
+        success: false,
+        error: err,
+        status: err.status,
+        message: err.message || 'Неверное имя пользователя или пароль',
+        validationErrors,
+      };
     } finally {
       setIsLoading(false);
     }
