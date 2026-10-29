@@ -64,6 +64,15 @@
        - Подсветка конкретных полей (`.input-error`, `aria-invalid="true"`) и вывод точного текста валидации под каждым проблемным полем (`<span className="field-error-text">`).
        - Автоматический сброс серверной ошибки конкретного поля при начале нового ввода пользователем.
      - В [`App.css`](frontend/src/App.css) добавлены стили для `.server-alert`, `.server-alert-error`, `.server-alert-icon`, `.error-small-icon` в стилистике Dark Glassmorphism.
+   - [x] Реализовано отображение сообщения об успехе и редирект (Success Message Display & RedirectAttributes):
+     - В [`RegistrationWebController`](src/main/java/com/ghInternship/GHInternship2026/controller/RegistrationWebController.java) реализован классический паттерн Post/Redirect/Get (PRG) с использованием Spring's `RedirectAttributes`:
+       - Эндпоинт `POST /register` сохраняет flash-атрибуты `successMessage` и `username` во `FlashMap` и перенаправляет на `/registration-success` (`redirect:/registration-success`).
+       - Эндпоинт `GET /registration-success` автоматически принимает flash-атрибуты из сессии и отдает HTML-страницу успеха в стилистике Dark Glassmorphism для браузеров либо JSON-ответ для API / MockMvc.
+     - В [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java) открыт публичный доступ к эндпоинтам `/register`, `/registration-success` (`permitAll()`) и `/register` исключен из проверки CSRF.
+     - Добавлен тестовый класс [`RegistrationWebControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/RegistrationWebControllerTest.java), проверяющий 3xx-редирект, наличие flash-атрибутов (`flash().attributeExists(...)`), валидацию и отображение страницы успеха (все 84 теста бэкенда успешно проходят).
+     - В React создан компонент [`SuccessPage.jsx`](frontend/src/components/SuccessPage.jsx): анимированная пульсирующая галочка успеха, персональный бейдж пользователя, flash-сообщение от бэкенда, карточка преимуществ безопасности (BCrypt), таймер обратного отсчета (6 сек.) с кнопками паузы/продолжения и кнопка прямого перехода на форму входа.
+     - В [`App.jsx`](frontend/src/App.jsx) добавлена поддержка представления `success`, перенаправление пользователя на страницу успеха после регистрации и перехват URL-параметров при внешних редиректах со стороны Spring Boot.
+     - В [`App.css`](frontend/src/App.css) добавлены стили `.success-card`, `.success-icon-wrapper`, `.success-check-icon`, `.registered-user-pill`, `.redirect-timer-box`, `.success-login-btn` и анимации.
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.

@@ -2,13 +2,42 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
+import SuccessPage from './components/SuccessPage';
 import Dashboard from './components/Dashboard';
 import Notification from './components/Notification';
 import { registerUser, loginUser, checkBackendHealth } from './services/api';
 import './App.css';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
+  const [successData, setSuccessData] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const registered = params.get('registered') || params.get('success');
+      const userParam = params.get('username');
+      const msgParam = params.get('message');
+      if (registered === 'true' || userParam) {
+        const username = userParam || 'Новый пользователь';
+        const message = msgParam || `Регистрация прошла успешно! Добро пожаловать, ${username}!`;
+        return { username, message };
+      }
+    } catch {
+      // Игнорируем ошибки парсинга URL
+    }
+    return null;
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('registered') === 'true' || params.get('username')) {
+        return 'success';
+      }
+    } catch {
+      // Игнорируем
+    }
+    return 'login';
+  });
+
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('gh_internship_user');
@@ -18,8 +47,35 @@ export default function App() {
     }
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('registered') === 'true' || params.get('username')) {
+        const username = params.get('username') || 'Новый пользователь';
+        const message = params.get('message') || `Регистрация прошла успешно! Добро пожаловать, ${username}!`;
+        return {
+          type: 'success',
+          title: 'Регистрация успешна!',
+          message,
+        };
+      }
+    } catch {
+      // Игнорируем
+    }
+    return null;
+  });
   const [backendStatus, setBackendStatus] = useState({ online: false, message: 'Проверка...' });
+
+  // Автоматическая очистка параметров URL после обработки внешнего редиректа
+  useEffect(() => {
+    if (successData) {
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {
+        // Игнорируем
+      }
+    }
+  }, [successData]);
 
   // Автоматическое скрытие уведомления через 6 секунд
   useEffect(() => {
@@ -59,12 +115,24 @@ export default function App() {
     setNotification(null);
     try {
       const result = await registerUser({ username, password });
+      const registeredUsername = result.username || username;
+      const successMsg = result.message || `Пользователь "${registeredUsername}" успешно зарегистрирован!`;
+
+      // Сохраняем данные для отображения страницы успеха
+      setSuccessData({
+        username: registeredUsername,
+        message: successMsg,
+      });
+
+      // Перенаправляем пользователя на Success Page (паттерн Post/Redirect/Get)
+      setActiveTab('success');
+
       setNotification({
         type: 'success',
         title: 'Регистрация успешна!',
-        message: `Пользователь "${result.username || username}" успешно создан. Теперь вы можете войти в систему.`,
+        message: successMsg,
       });
-      setActiveTab('login');
+
       return { success: true, data: result };
     } catch (err) {
       console.error('[App] Ошибка при регистрации:', err);
@@ -197,7 +265,21 @@ export default function App() {
         ) : (
           <div className="auth-wrapper">
             <div className="auth-container">
-              {activeTab === 'register' ? (
+              {activeTab === 'success' ? (
+                <SuccessPage
+                  username={successData?.username}
+                  message={successData?.message}
+                  onSwitchToLogin={() => {
+                    setNotification(null);
+                    setActiveTab('login');
+                  }}
+                  onGoRegisterAnother={() => {
+                    setNotification(null);
+                    setSuccessData(null);
+                    setActiveTab('register');
+                  }}
+                />
+              ) : activeTab === 'register' ? (
                 <RegisterForm
                   onRegister={handleRegister}
                   onSwitchToLogin={() => {
