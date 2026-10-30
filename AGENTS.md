@@ -72,7 +72,19 @@
      - Добавлен тестовый класс [`RegistrationWebControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/RegistrationWebControllerTest.java), проверяющий 3xx-редирект, наличие flash-атрибутов (`flash().attributeExists(...)`), валидацию и отображение страницы успеха (все 84 теста бэкенда успешно проходят).
      - В React создан компонент [`SuccessPage.jsx`](frontend/src/components/SuccessPage.jsx): анимированная пульсирующая галочка успеха, персональный бейдж пользователя, flash-сообщение от бэкенда, карточка преимуществ безопасности (BCrypt), таймер обратного отсчета (6 сек.) с кнопками паузы/продолжения и кнопка прямого перехода на форму входа.
      - В [`App.jsx`](frontend/src/App.jsx) добавлена поддержка представления `success`, перенаправление пользователя на страницу успеха после регистрации и перехват URL-параметров при внешних редиректах со стороны Spring Boot.
-     - В [`App.css`](frontend/src/App.css) добавлены стили `.success-card`, `.success-icon-wrapper`, `.success-check-icon`, `.registered-user-pill`, `.redirect-timer-box`, `.success-login-btn` и анимации.
+   - [x] Рефакторинг AuthController для единообразной обработки ошибок (Refactor AuthController for better error handling):
+     - Создана иерархия кастомных доменных исключений в пакете `com.ghInternship.GHInternship2026.exception`:
+       - [`InvalidCredentialsException`](src/main/java/com/ghInternship/GHInternship2026/exception/InvalidCredentialsException.java): выбрасывается при неверном логине или пароле и отображается в HTTP 401 Unauthorized.
+       - [`ValidationException`](src/main/java/com/ghInternship/GHInternship2026/exception/ValidationException.java): инкапсулирует `BindingResult` при обнаружении ошибок валидации и отображается в HTTP 400 Bad Request с подробной картой `validationErrors`.
+       - [`UserNotFoundException`](src/main/java/com/ghInternship/GHInternship2026/exception/UserNotFoundException.java): отображается в HTTP 404 Not Found.
+     - Отрефакторен [`AuthController`](src/main/java/com/ghInternship/GHInternship2026/controller/AuthController.java):
+       - Удален приватный метод ручной сборки ответа `handleValidationErrors(...)`.
+       - Эндпоинты `register` и `login` очищены от низкоуровневой логики обработки ошибок: методы выбрасывают `ValidationException` и `InvalidCredentialsException`, концентрируясь исключительно на успешном бизнес-сценарии («happy path»).
+       - Методы теперь строго типизированы: возвращают `ResponseEntity<UserResponseDto>` и `ResponseEntity<AuthResponseDto>` вместо универсального `ResponseEntity<?>`.
+     - Расширен централизованный обработчик [`GlobalExceptionHandler`](src/main/java/com/ghInternship/GHInternship2026/exception/GlobalExceptionHandler.java) (`@RestControllerAdvice`):
+       - Добавлены аннотированные методы `@ExceptionHandler` для `InvalidCredentialsException`, `ValidationException`, `UserNotFoundException` и общего fallback-обработчика `Exception.class` (HTTP 500 без утечки стектрейса).
+       - Обеспечена 100% единообразная структура JSON-ответов об ошибках на базе [`ErrorResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/ErrorResponseDto.java) (`timestamp`, `status`, `error`, `message`, `path`, `validationErrors`).
+     - Создан тестовый класс [`GlobalExceptionHandlerTest`](src/test/java/com/ghInternship/GHInternship2026/exception/GlobalExceptionHandlerTest.java), изолированно проверяющий маппинг всех типов исключений в HTTP-ответы (все 91 тест бэкенда успешно проходят).
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
