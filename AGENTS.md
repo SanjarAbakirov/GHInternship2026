@@ -90,6 +90,14 @@
      - Создан конфигурационный класс [`WebConfig`](src/main/java/com/ghInternship/GHInternship2026/config/WebConfig.java) с бином `WebMvcConfigurer`, регистрирующий маппинг `/**` со всеми допустимыми origins, методами, заголовками, поддержкой credentials и maxAge (3600 сек.), а также информативным логированием параметров инициализации.
      - Обновлен [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java): бин `CorsConfigurationSource` синхронизирован с параметрами `WebConfig`, что гарантирует согласованность цепочки фильтров Spring Security и DispatcherServlet Spring MVC, предотвращая ложные блокировки preflight-запросов (`OPTIONS`).
      - Создан комплексный тестовый класс [`CorsConfigurationTest`](src/test/java/com/ghInternship/GHInternship2026/config/CorsConfigurationTest.java): верифицировано наличие бина `WebMvcConfigurer`, успешная обработка preflight `OPTIONS` запросов для портов 3000 и 5173, передача заголовков `Access-Control-Allow-Origin`, `Access-Control-Allow-Credentials`, `Access-Control-Max-Age`, работа `GET /hello` и отклонение запросов с недоверенных origins (все 96 тестов бэкенда успешно проходят).
+   - [x] Безопасное управление API-ключом внешнего AI-сервиса (Secure API Key Management - Backend):
+     - Внедрен интерфейс [`AiService`](src/main/java/com/ghInternship/GHInternship2026/service/AiService.java) и реализация [`ExternalAiService`](src/main/java/com/ghInternship/GHInternship2026/service/ExternalAiService.java) с инъекцией ключа через `@Value("${ai.service.api-key:}")`.
+     - Реализовано безопасное маскирование ключа (`getMaskedApiKey()`, например `sk-d***ting`), исключающее утечку реального секрета в логи и трассировки. Добавлен метод проверки конфигурации `isConfigured()`.
+     - API-ключ изолирован на бэкенде и никогда не экспортируется через контроллеры и DTO на фронтенд.
+     - Создан файл-шаблон [`application.properties.example`](src/main/resources/application.properties.example) с безопасным плейсхолдером `ai.service.api-key=${AI_SERVICE_API_KEY:YOUR_DEV_AI_API_KEY_HERE}`.
+     - Файл конфигурации `application.properties` исключен из индекса Git и добавлен в [`.gitignore`](.gitignore) (`**/src/main/resources/application.properties`), что предотвращает случайный коммит секретов в репозиторий.
+     - Обновлен пайплайн CI/CD в [`.github/workflows/ci.yml`](.github/workflows/ci.yml): добавлен шаг копирования `application.properties.example` в `application.properties` перед запуском сборки Maven.
+     - Написаны модульные [`ExternalAiServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/ExternalAiServiceTest.java) и интеграционные тесты [`ExternalAiServiceIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/service/ExternalAiServiceIntegrationTest.java) (всего 104 теста бэкенда успешно проходят).
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
