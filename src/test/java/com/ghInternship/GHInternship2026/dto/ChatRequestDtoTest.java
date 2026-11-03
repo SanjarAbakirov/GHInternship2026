@@ -58,3 +58,4 @@ class ChatRequestDtoTest {
         assertThat(violations).anyMatch(v -> v.getMessage().contains("between 1 and 2000 characters"));
     }
 }
+

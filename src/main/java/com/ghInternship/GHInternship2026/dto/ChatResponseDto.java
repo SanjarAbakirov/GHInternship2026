@@ -16,3 +16,4 @@ public record ChatResponseDto(
         this(response, LocalDateTime.now());
     }
 }
+

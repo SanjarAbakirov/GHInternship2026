@@ -16,3 +16,4 @@ public record ChatRequestDto(
         String message
 ) {
 }
+

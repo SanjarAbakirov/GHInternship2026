@@ -39,3 +39,4 @@ public class ChatServiceImpl implements ChatService {
         return new ChatResponseDto(aiResponse);
     }
 }
+

@@ -19,3 +19,4 @@ public interface ChatService {
      */
     ChatResponseDto processMessage(ChatRequestDto requestDto);
 }
+
