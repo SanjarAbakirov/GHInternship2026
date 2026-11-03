@@ -33,8 +33,9 @@ public class SecurityConfig {
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/register", "/registration-success").permitAll()
+                        .requestMatchers("/api/chat/**").permitAll()
                         .anyRequest().authenticated())
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/auth/**", "/register"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/auth/**", "/register", "/api/chat/**"))
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .build();
     }
