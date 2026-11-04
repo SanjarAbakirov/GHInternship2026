@@ -6,10 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -24,11 +26,32 @@ class ChatControllerIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
-    @DisplayName("POST /api/chat should process message end-to-end and return 200 OK")
-    void shouldProcessMessageEndToEnd() throws Exception {
+    @DisplayName("POST /api/chat without authentication should be rejected with 401 Unauthorized")
+    void shouldRejectUnauthenticatedRequestWith401() throws Exception {
         String requestJson = """
                 {
-                    "message": "Hello from Integration Test!"
+                    "message": "Hello unauthenticated!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message", containsString("Full authentication is required")))
+                .andExpect(jsonPath("$.path").value("/api/chat"))
+                .andExpect(jsonPath("$.timestamp", notNullValue()));
+    }
+
+    @Test
+    @WithMockUser(username = "chatUser")
+    @DisplayName("POST /api/chat with authenticated user should process message and return 200 OK")
+    void shouldProcessMessageWhenAuthenticated() throws Exception {
+        String requestJson = """
+                {
+                    "message": "Hello from Authenticated User!"
                 }
                 """;
 
@@ -37,25 +60,26 @@ class ChatControllerIntegrationTest {
                         .content(requestJson))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.response", notNullValue()))
-                .andExpect(jsonPath("$.response", containsString("Hello from Integration Test!")))
+                .andExpect(jsonPath("$.response", containsString("Hello from Authenticated User!")))
                 .andExpect(jsonPath("$.timestamp", notNullValue()));
     }
 
     @Test
-    @DisplayName("OPTIONS /api/chat should allow CORS preflight request from React frontend (http://localhost:3000)")
-    void shouldAllowCorsPreflightForChatEndpoint() throws Exception {
+    @DisplayName("OPTIONS /api/chat should allow CORS preflight request without authentication from React frontend")
+    void shouldAllowCorsPreflightForChatEndpointWithoutAuth() throws Exception {
         mockMvc.perform(options("/api/chat")
                         .header("Origin", "http://localhost:3000")
                         .header("Access-Control-Request-Method", "POST")
-                        .header("Access-Control-Request-Headers", "Content-Type"))
+                        .header("Access-Control-Request-Headers", "Content-Type,Authorization"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
     @Test
-    @DisplayName("POST /api/chat should return 400 Bad Request with validation errors when message is empty")
-    void shouldReturn400_WhenMessageIsBlank() throws Exception {
+    @WithMockUser(username = "chatUser")
+    @DisplayName("POST /api/chat with authenticated user should return 400 Bad Request when message is empty")
+    void shouldReturn400_WhenMessageIsBlankAndAuthenticated() throws Exception {
         String requestJson = """
                 {
                     "message": ""
@@ -69,5 +93,23 @@ class ChatControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.validationErrors.message", notNullValue()));
     }
-}
 
+    @Test
+    @DisplayName("Public endpoints like GET /hello and POST /api/auth/register should remain accessible without authentication")
+    void publicEndpointsShouldRemainAccessible() throws Exception {
+        mockMvc.perform(get("/hello"))
+                .andExpect(status().isOk());
+
+        String validRegisterJson = """
+                {
+                    "username": "publicUser",
+                    "password": "Password123!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRegisterJson))
+                .andExpect(status().isCreated());
+    }
+}
