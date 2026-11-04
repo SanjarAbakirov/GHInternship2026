@@ -111,6 +111,12 @@
      - Реализован кастомный `AuthenticationEntryPoint`: любые неаутентифицированные запросы (без токена/авторизации) отклоняются со статусом HTTP 401 Unauthorized и стандартизированным телом ошибки в формате JSON.
      - Добавлено предупреждающее логирование попыток неаутентифицированного доступа к защищенным ресурсам.
      - Обновлены и дополнены интеграционные тесты в [`ChatControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerIntegrationTest.java): проверка отклонения 401 Unauthorized без авторизации, успешная обработка 200 OK при наличии авторизованного пользователя (`@WithMockUser`), прохождение CORS preflight `OPTIONS` без токена и сохранение публичного доступа к `/api/auth/**` (всего 121 тест бэкенда успешно проходит).
+   - [x] Модульное тестирование ChatController со Spring Security (Unit Tests for ChatController):
+     - Класс [`ChatControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerTest.java) переведен на срезовое тестирование `@WebMvcTest(controllers = ChatController.class)` с импортом конфигураций [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java) и [`WebConfig`](src/main/java/com/ghInternship/GHInternship2026/config/WebConfig.java).
+     - Сервисный слой чата замокирован с помощью аннотации `@MockitoBean` (официальный современный аналог `@MockBean` в Spring Boot 4.0 / Spring Framework 7).
+     - Реализован тест для неаутентифицированного пользователя, проверяющий возврат HTTP 401 Unauthorized и отсутствие взаимодействия с сервисом (`verifyNoInteractions(chatService)`).
+     - Реализованы тесты для аутентифицированного пользователя (`@WithMockUser`): успешный сценарий HTTP 200 OK, ошибки валидации HTTP 400 Bad Request при пустом (`blank`/`null`) сообщении, превышении максимальной длины (>2000 символов) и отсутствующем теле запроса.
+     - Проверено выполнение CORS preflight `OPTIONS` без авторизации (все 125 тестов бэкенда успешно проходят).
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
