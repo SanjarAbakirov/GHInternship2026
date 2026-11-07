@@ -133,6 +133,19 @@
         - Проверка быстрой валидации невалидных входных DTO без лишних обращений к сетевому клиенту (`verifyNoInteractions(restTemplate)`).
       - Все 128 тестов бэкенда успешно проходят (`./mvnw clean test` — SUCCESS), сборка и линтинг фронтенда без предупреждений.
 
+    - [x] Защищенная маршрутизация и обратная связь с пользователем (Protected Routing and User Feedback - Frontend):
+      - Подключена библиотека `react-router-dom` (v7) для организации полноценной SPA-маршрутизации с URL-адресами (`/login`, `/register`, `/success`, `/dashboard`, `/chat`).
+      - Разработан контекст аутентификации [`AuthContext`](frontend/src/context/AuthContext.jsx) с хуком `useAuth`, управляющий глобальным состоянием пользователя, токеном, флагом `isAuthenticated`, синхронизацией с `localStorage` (`gh_internship_user`, `gh_internship_token`), а также методами `login`, `register`, `logout`.
+      - Реализован компонент защиты маршрутов [`ProtectedRoute`](frontend/src/components/ProtectedRoute.jsx), проверяющий статус аутентификации:
+        - При наличии авторизации — отображает целевой компонент.
+        - При отсутствии авторизации — перенаправляет на `/login` с сохранением исходного маршрута в `location.state.from` и сообщением `message: "You must be logged in to access the chat."`.
+      - В [`LoginForm`](frontend/src/components/LoginForm.jsx) добавлена обработка входящего `location.state`: отображение предупреждающего баннера с сообщением `"You must be logged in to access the chat."` и автоматический переход на исходный маршрут после авторизации.
+      - В [`App`](frontend/src/App.jsx) настроен глобальный перехват сообщений редиректа с выводом тост-уведомления.
+      - Разработана страница AI-чата [`ChatPage`](frontend/src/components/ChatPage.jsx) в дизайне Dark Glassmorphism: история сообщений, индикатор набора текста AI, быстрые подсказки (chips), отправка запросов на `POST /api/chat` через функцию `sendChatMessage` в [`api.js`](frontend/src/services/api.js).
+      - В [`Navbar`](frontend/src/components/Navbar.jsx) добавлены ссылки на страницы с подсветкой активного таба и иконкой замка для неавторизованного перехода в защищенный чат.
+      - Добавлены стили в [`App.css`](frontend/src/App.css) для чата, индикаторов загрузки и предупреждающих баннеров.
+      - Проверена сборка (`npm run build` — 109ms), линтер (`oxlint` — 0 ошибок и 0 предупреждений) и бэкенд-тесты (`./mvnw test` — 128 SUCCESS).
+
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
 - Добавление `JwtAuthenticationFilter` в цепочку безопасности Spring Security.
