@@ -118,6 +118,21 @@
      - Реализованы тесты для аутентифицированного пользователя (`@WithMockUser`): успешный сценарий HTTP 200 OK, ошибки валидации HTTP 400 Bad Request при пустом (`blank`/`null`) сообщении, превышении максимальной длины (>2000 символов) и отсутствующем теле запроса.
      - Проверено выполнение CORS preflight `OPTIONS` без авторизации (все 125 тестов бэкенда успешно проходят).
 
+    - [x] Модульное тестирование ChatService с Mockito (Unit Tests for ChatService):
+      - Зарегистрирован бин `RestTemplate` в конфигурационном классе [`WebConfig`](src/main/java/com/ghInternship/GHInternship2026/config/WebConfig.java) для инъекции HTTP-клиента.
+      - В [`ChatServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/ChatServiceImpl.java) реализована полнофункциональная логика вызова внешнего AI API: внедрение `RestTemplate`, чтение URL (`ai.service.api-url`) и API-ключа (`ai.service.api-key`), формирование JSON-структуры запроса совместимой с OpenAI/LLM (`model`, `messages`, `role`, `content`), передача токена в заголовке `Authorization: Bearer <key>`, парсинг ответа и обработка ошибок (`HttpStatusCodeException`, `RestClientException`).
+      - В [`application.properties.example`](src/main/resources/application.properties.example) добавлено свойство `ai.service.api-url=https://api.openai.com/v1/chat/completions`.
+      - В интеграционных тестах [`ChatControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerIntegrationTest.java) бин `RestTemplate` замокирован через `@MockitoBean`, что исключает реальные сетевые запросы во время интеграционного тестирования.
+      - Создан комплексный тестовый класс [`ChatServiceImplTest`](src/test/java/com/ghInternship/GHInternship2026/service/ChatServiceImplTest.java) на базе Mockito (`@Mock private RestTemplate restTemplate`):
+        - Проверка правильности конструирования HTTP-запроса (URL, заголовок `Bearer`, JSON body) с валидацией через `ArgumentCaptor`.
+        - Проверка успешного получения ответа HTTP 200 OK и извлечения сгенерированного сообщения.
+        - Проверка устойчивости к plain text и нестандартным форматам ответов.
+        - Проверка обработки клиентских ошибок (HTTP 401 Unauthorized при невалидном ключе).
+        - Проверка обработки серверных ошибок (HTTP 500 Internal Server Error при сбоях AI-провайдера).
+        - Проверка обработки сетевых таймаутов и недоступности хоста (`ResourceAccessException`).
+        - Проверка быстрой валидации невалидных входных DTO без лишних обращений к сетевому клиенту (`verifyNoInteractions(restTemplate)`).
+      - Все 128 тестов бэкенда успешно проходят (`./mvnw clean test` — SUCCESS), сборка и линтинг фронтенда без предупреждений.
+
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
 - Добавление `JwtAuthenticationFilter` в цепочку безопасности Spring Security.

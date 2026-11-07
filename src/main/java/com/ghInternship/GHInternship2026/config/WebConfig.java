@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -78,6 +79,16 @@ public class WebConfig {
 
     public long getMaxAge() {
         return maxAge;
+    }
+
+    /**
+     * Бин {@link RestTemplate} для выполнения HTTP-запросов к внешним API (включая AI сервисы).
+     *
+     * @return настроенный экземпляр {@link RestTemplate}
+     */
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }
 

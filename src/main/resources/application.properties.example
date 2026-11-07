@@ -31,6 +31,8 @@ app.cors.max-age=3600
 # --------------------------------------------------
 # External AI Service Configuration
 # --------------------------------------------------
+# URL эндпоинта внешнего AI-сервиса (по умолчанию OpenAI Chat Completions API)
+ai.service.api-url=${AI_SERVICE_API_URL:https://api.openai.com/v1/chat/completions}
 # Шаблон ключа для локальной разработки.
 # Скопируйте данный файл в application.properties и укажите реальный локальный ключ:
 # cp src/main/resources/application.properties.example src/main/resources/application.properties
