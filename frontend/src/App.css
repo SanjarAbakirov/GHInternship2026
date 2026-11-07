@@ -1459,6 +1459,7 @@
    AI Chat Page (Dark Glassmorphism)
    ========================================================================== */
 
+.chat-window-container,
 .chat-page-container {
   width: 100%;
   max-width: 900px;

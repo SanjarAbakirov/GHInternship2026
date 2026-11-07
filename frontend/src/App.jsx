@@ -5,7 +5,7 @@ import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import SuccessPage from './components/SuccessPage';
 import Dashboard from './components/Dashboard';
-import ChatPage from './components/ChatPage';
+import Chat from './components/Chat';
 import ProtectedRoute from './components/ProtectedRoute';
 import Notification from './components/Notification';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -330,7 +330,7 @@ function AppContent() {
             path="/chat"
             element={
               <ProtectedRoute>
-                <ChatPage />
+                <Chat />
               </ProtectedRoute>
             }
           />

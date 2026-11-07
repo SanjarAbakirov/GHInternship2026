@@ -146,6 +146,13 @@
       - Добавлены стили в [`App.css`](frontend/src/App.css) для чата, индикаторов загрузки и предупреждающих баннеров.
       - Проверена сборка (`npm run build` — 109ms), линтер (`oxlint` — 0 ошибок и 0 предупреждений) и бэкенд-тесты (`./mvnw test` — 128 SUCCESS).
 
+    - [x] Создание переиспользуемого компонента AI-чата (ReactJS Chat Component Creation - Frontend):
+      - Разработан переиспользуемый компонент [`Chat.jsx`](frontend/src/components/Chat.jsx) с поддержкой кастомизации заголовков, подсказок, обработчиков и лимитов через props (`title`, `subtitle`, `placeholder`, `initialMessages`, `onSendMessage`, `quickPrompts`, `showQuickPrompts`, `showClearButton`, `maxMessageLength`).
+      - Структурировано JSX-окно чата: область отображения сообщений (`#chat-messages-display`), текстовое поле ввода (`#chat-user-input`) с валидацией длины и счетчиком символов, кнопка отправки (`#chat-send-btn`) с SVG-иконкой и анимацией спиннера, анимация набора текста AI (`typing-indicator`).
+      - Компонент смонтирован на защищенном маршруте `/chat` через [`ProtectedRoute`](frontend/src/components/ProtectedRoute.jsx) в [`App.jsx`](frontend/src/App.jsx).
+      - Обеспечена обратная совместимость через фасадный компонент [`ChatPage.jsx`](frontend/src/components/ChatPage.jsx).
+      - Проверена адаптивность в стилистике Dark Glassmorphism, линтинг (`oxlint` — 0 ошибок и 0 предупреждений) и сборка (`npm run build` — 115ms), все 128 тестов бэкенда пройдены.
+
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
 - Добавление `JwtAuthenticationFilter` в цепочку безопасности Spring Security.
