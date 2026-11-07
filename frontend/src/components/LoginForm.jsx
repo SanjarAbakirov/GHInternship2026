@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
  * Форма входа (аутентификации) пользователя
  */
 export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -11,6 +15,9 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
   const [touched, setTouched] = useState({ username: false, password: false });
   const [serverErrors, setServerErrors] = useState({});
   const [serverGeneralError, setServerGeneralError] = useState('');
+  const [dismissedAlert, setDismissedAlert] = useState(false);
+
+  const redirectAlert = !dismissedAlert ? (location.state?.message || null) : null;
 
   // Валидация полей
   const errors = {};
@@ -42,7 +49,11 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
     console.log(`[LoginForm] Отправка данных авторизации для пользователя: "${username.trim()}"`);
     if (onLogin) {
       const result = await onLogin({ username: username.trim(), password, rememberMe });
-      if (result && !result.success) {
+      if (result && result.success) {
+        const targetPath = location.state?.from || '/chat';
+        console.log(`[LoginForm] Авторизация успешна. Перенаправление на ${targetPath}`);
+        navigate(targetPath, { replace: true });
+      } else if (result && !result.success) {
         console.warn('[LoginForm] Получена ошибка от бэкенда:', result);
         if (result.validationErrors && Object.keys(result.validationErrors).length > 0) {
           setServerErrors(result.validationErrors);
@@ -56,6 +67,14 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
     }
   };
 
+  const handleSwitchToRegister = () => {
+    if (onSwitchToRegister) {
+      onSwitchToRegister();
+    } else {
+      navigate('/register');
+    }
+  };
+
   return (
     <div className="auth-card" id="login-card">
       <div className="card-header">
@@ -64,6 +83,27 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
           Введите ваши учетные данные для авторизации в системе
         </p>
       </div>
+
+      {/* Баннер предупреждения при перенаправлении с защищенного маршрута */}
+      {redirectAlert && (
+        <div className="server-alert server-alert-warning" role="alert" id="login-redirect-warning">
+          <svg className="server-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div className="server-alert-content">
+            <div className="server-alert-title">Требуется авторизация</div>
+            <p className="server-alert-message">{redirectAlert}</p>
+          </div>
+          <button
+            type="button"
+            className="alert-dismiss-btn"
+            onClick={() => setDismissedAlert(true)}
+            aria-label="Закрыть уведомление"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Баннер ошибки бэкенда */}
       {serverGeneralError && (
@@ -220,7 +260,7 @@ export default function LoginForm({ onLogin, onSwitchToRegister, isLoading }) {
           <button
             type="button"
             className="link-btn"
-            onClick={onSwitchToRegister}
+            onClick={handleSwitchToRegister}
             id="switch-to-register-btn"
           >
             Зарегистрироваться

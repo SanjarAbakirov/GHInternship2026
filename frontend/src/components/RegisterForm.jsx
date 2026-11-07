@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Форма регистрации пользователя с валидацией в реальном времени
  */
 export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading }) {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -309,7 +311,7 @@ export default function RegisterForm({ onRegister, onSwitchToLogin, isLoading })
           <button
             type="button"
             className="link-btn"
-            onClick={onSwitchToLogin}
+            onClick={onSwitchToLogin || (() => navigate('/login'))}
             id="switch-to-login-btn"
           >
             Войти в систему

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Страница успешной регистрации (Success Page)
@@ -6,14 +7,31 @@ import React, { useState, useEffect } from 'react';
  * информацию о безопасности учетной записи и предоставляет таймер автоматического перехода на форму входа.
  */
 export default function SuccessPage({ username, message, onSwitchToLogin, onGoRegisterAnother }) {
+  const navigate = useNavigate();
   const [countdown, setCountdown] = useState(6);
   const [isPaused, setIsPaused] = useState(false);
+
+  const handleLoginTransition = useCallback(() => {
+    if (onSwitchToLogin) {
+      onSwitchToLogin();
+    } else {
+      navigate('/login');
+    }
+  }, [onSwitchToLogin, navigate]);
+
+  const handleRegisterAnotherTransition = () => {
+    if (onGoRegisterAnother) {
+      onGoRegisterAnother();
+    } else {
+      navigate('/register');
+    }
+  };
 
   useEffect(() => {
     if (isPaused) return;
 
     if (countdown <= 0) {
-      onSwitchToLogin();
+      handleLoginTransition();
       return;
     }
 
@@ -22,7 +40,7 @@ export default function SuccessPage({ username, message, onSwitchToLogin, onGoRe
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [countdown, isPaused, onSwitchToLogin]);
+  }, [countdown, isPaused, handleLoginTransition]);
 
   const effectiveUser = username || 'Пользователь';
   const effectiveMessage = message || `Регистрация прошла успешно! Добро пожаловать, ${effectiveUser}!`;
@@ -112,23 +130,21 @@ export default function SuccessPage({ username, message, onSwitchToLogin, onGoRe
         <button
           type="button"
           className="btn btn-primary btn-block success-login-btn"
-          onClick={onSwitchToLogin}
+          onClick={handleLoginTransition}
           id="success-login-now-btn"
         >
           <span>Войти в аккаунт прямо сейчас</span>
           <span className="btn-arrow">→</span>
         </button>
 
-        {onGoRegisterAnother && (
-          <button
-            type="button"
-            className="btn btn-ghost btn-block mt-2"
-            onClick={onGoRegisterAnother}
-            id="register-another-btn"
-          >
-            Зарегистрировать другого пользователя
-          </button>
-        )}
+        <button
+          type="button"
+          className="btn btn-ghost btn-block mt-2"
+          onClick={handleRegisterAnotherTransition}
+          id="register-another-btn"
+        >
+          Зарегистрировать другого пользователя
+        </button>
       </div>
     </div>
   );

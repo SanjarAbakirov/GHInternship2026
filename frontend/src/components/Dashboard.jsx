@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * Личный кабинет (Dashboard) успешно аутентифицированного пользователя
@@ -31,6 +32,12 @@ export default function Dashboard({ user, onLogout, backendStatus, onRefreshBack
         <p className="dashboard-subtitle">
           Вы успешно прошли аутентификацию в системе GHInternship 2026. Ваши учетные данные проверены и защищены хэшированием BCrypt.
         </p>
+        <div className="dashboard-hero-actions">
+          <Link to="/chat" className="btn btn-primary hero-chat-btn" id="hero-go-to-chat-btn">
+            <span>💬 Перейти в AI-чат</span>
+            <span className="btn-arrow">→</span>
+          </Link>
+        </div>
       </div>
 
       {/* Информационные карточки */}
@@ -110,6 +117,11 @@ export default function Dashboard({ user, onLogout, backendStatus, onRefreshBack
               <span className="http-badge get">GET</span>
               <span className="endpoint-path">/hello</span>
               <span className="endpoint-desc">Публичный эндпоинт проверки</span>
+            </div>
+            <div className="endpoint-item">
+              <span className="http-badge post">POST</span>
+              <span className="endpoint-path">/api/chat</span>
+              <span className="endpoint-desc">Защищенный AI-чат (Spring Security)</span>
             </div>
           </div>
 

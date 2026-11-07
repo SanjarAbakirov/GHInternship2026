@@ -70,6 +70,28 @@ export async function loginUser({ username, password }) {
 }
 
 /**
+ * Отправка сообщения в защищенный эндпоинт AI-чата
+ * @param {string} message - Текст сообщения пользователя
+ * @param {string} [token] - Токен авторизации (JWT / Bearer), если доступен
+ */
+export async function sendChatMessage(message, token) {
+  console.log(`[API] Отправка сообщения в AI-чат (длина: ${message?.length || 0} символов)`);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ message }),
+  });
+  return handleResponse(response);
+}
+
+/**
  * Проверка доступности Spring Boot бэкенда
  */
 export async function checkBackendHealth() {

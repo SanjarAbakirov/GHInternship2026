@@ -1,14 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import SuccessPage from './components/SuccessPage';
 import Dashboard from './components/Dashboard';
+import ChatPage from './components/ChatPage';
+import ProtectedRoute from './components/ProtectedRoute';
 import Notification from './components/Notification';
-import { registerUser, loginUser, checkBackendHealth } from './services/api';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { checkBackendHealth } from './services/api';
 import './App.css';
 
-export default function App() {
+/**
+ * Внутренний компонент приложения, использующий хуки маршрутизации и контекст аутентификации
+ */
+function AppContent() {
+  const { currentUser, login, register, logout, isLoading: authLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [isLoading, setIsLoading] = useState(false);
   const [successData, setSuccessData] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -21,38 +33,22 @@ export default function App() {
         return { username, message };
       }
     } catch {
-      // Игнорируем ошибки парсинга URL
+      // Игнорируем
     }
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('registered') === 'true' || params.get('username')) {
-        return 'success';
-      }
-    } catch {
-      // Игнорируем
-    }
-    return 'login';
-  });
+  const [backendStatus, setBackendStatus] = useState({ online: false, message: 'Проверка...' });
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gh_internship_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('registered') === 'true' || params.get('username')) {
-        const username = params.get('username') || 'Новый пользователь';
-        const message = params.get('message') || `Регистрация прошла успешно! Добро пожаловать, ${username}!`;
+      const registered = params.get('registered') || params.get('success');
+      const userParam = params.get('username');
+      const msgParam = params.get('message');
+      if (registered === 'true' || userParam) {
+        const username = userParam || 'Новый пользователь';
+        const message = msgParam || `Регистрация прошла успешно! Добро пожаловать, ${username}!`;
         return {
           type: 'success',
           title: 'Регистрация успешна!',
@@ -64,18 +60,36 @@ export default function App() {
     }
     return null;
   });
-  const [backendStatus, setBackendStatus] = useState({ online: false, message: 'Проверка...' });
 
-  // Автоматическая очистка параметров URL после обработки внешнего редиректа
+  const prevLocationStateRef = useRef(null);
+
+  // Очистка URL параметров после обработки внешнего редиректа
   useEffect(() => {
-    if (successData) {
-      try {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('registered') || params.get('username')) {
         window.history.replaceState({}, document.title, window.location.pathname);
-      } catch {
-        // Игнорируем
       }
+    } catch {
+      // Игнорируем
     }
-  }, [successData]);
+  }, []);
+
+  // Перехват сообщений от ProtectedRoute (например, "You must be logged in to access the chat.")
+  useEffect(() => {
+    if (location.state?.message && location.state !== prevLocationStateRef.current) {
+      prevLocationStateRef.current = location.state;
+      console.warn(`[App] Получено сообщение редиректа: "${location.state.message}"`);
+      const timer = setTimeout(() => {
+        setNotification({
+          type: location.state.type || 'warning',
+          title: location.state.title || 'Доступ ограничен',
+          message: location.state.message,
+        });
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
 
   // Автоматическое скрытие уведомления через 6 секунд
   useEffect(() => {
@@ -86,7 +100,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [notification]);
 
-  // Проверка соединения с бэкендом
+  // Проверка соединения со Spring Boot бэкендом
   const verifyBackend = useCallback(async () => {
     const status = await checkBackendHealth();
     setBackendStatus(status);
@@ -109,23 +123,19 @@ export default function App() {
     };
   }, []);
 
-  // Обработка регистрации
+  // Обработка регистрации через AuthContext
   const handleRegister = async ({ username, password }) => {
     setIsLoading(true);
     setNotification(null);
     try {
-      const result = await registerUser({ username, password });
-      const registeredUsername = result.username || username;
-      const successMsg = result.message || `Пользователь "${registeredUsername}" успешно зарегистрирован!`;
+      const result = await register({ username, password });
+      const registeredUsername = result.data?.username || username;
+      const successMsg = result.data?.message || `Пользователь "${registeredUsername}" успешно зарегистрирован!`;
 
-      // Сохраняем данные для отображения страницы успеха
       setSuccessData({
         username: registeredUsername,
         message: successMsg,
       });
-
-      // Перенаправляем пользователя на Success Page (паттерн Post/Redirect/Get)
-      setActiveTab('success');
 
       setNotification({
         type: 'success',
@@ -133,7 +143,11 @@ export default function App() {
         message: successMsg,
       });
 
-      return { success: true, data: result };
+      navigate('/success', {
+        state: { username: registeredUsername, message: successMsg },
+      });
+
+      return { success: true, data: result.data };
     } catch (err) {
       console.error('[App] Ошибка при регистрации:', err);
       const validationErrors = err.validationErrors || err.details || null;
@@ -163,27 +177,18 @@ export default function App() {
     }
   };
 
-  // Обработка входа
+  // Обработка входа через AuthContext
   const handleLogin = async ({ username, password, rememberMe }) => {
     setIsLoading(true);
     setNotification(null);
     try {
-      const result = await loginUser({ username, password });
-      const user = {
-        username: result.username || username,
-        id: result.id || 'N/A',
-        loginTime: new Date().toLocaleTimeString(),
-      };
-      setCurrentUser(user);
-      if (rememberMe) {
-        localStorage.setItem('gh_internship_user', JSON.stringify(user));
-      }
+      const result = await login({ username, password, rememberMe });
       setNotification({
         type: 'success',
         title: 'Успешная авторизация',
-        message: `Добро пожаловать в систему, ${user.username}!`,
+        message: `Добро пожаловать в систему, ${result.user?.username}!`,
       });
-      return { success: true, data: result };
+      return { success: true, data: result.data };
     } catch (err) {
       console.error('[App] Ошибка при входе:', err);
       const validationErrors = err.validationErrors || err.details || null;
@@ -213,16 +218,15 @@ export default function App() {
     }
   };
 
-  // Выход из системы
+  // Обработка выхода из системы
   const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('gh_internship_user');
-    setActiveTab('login');
+    logout();
     setNotification({
       type: 'info',
       title: 'Сеанс завершен',
       message: 'Вы успешно вышли из учетной записи.',
     });
+    navigate('/login');
   };
 
   return (
@@ -234,18 +238,13 @@ export default function App() {
 
       {/* Верхняя панель навигации */}
       <Navbar
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setNotification(null);
-          setActiveTab(tab);
-        }}
         backendStatus={backendStatus}
         onRefreshBackend={verifyBackend}
         currentUser={currentUser}
         onLogout={handleLogout}
       />
 
-      {/* Всплывающее уведомление */}
+      {/* Всплывающее тост-уведомление */}
       <div className="toast-portal">
         <Notification
           notification={notification}
@@ -253,54 +252,95 @@ export default function App() {
         />
       </div>
 
-      {/* Основная рабочая область */}
+      {/* Основная рабочая область с защищенной и открытой маршрутизацией */}
       <main className="main-content">
-        {currentUser ? (
-          <Dashboard
-            user={currentUser}
-            onLogout={handleLogout}
-            backendStatus={backendStatus}
-            onRefreshBackend={verifyBackend}
+        <Routes>
+          {/* Главная страница: перенаправляет в зависимости от авторизации */}
+          <Route
+            path="/"
+            element={<Navigate to={currentUser ? '/chat' : '/login'} replace />}
           />
-        ) : (
-          <div className="auth-wrapper">
-            <div className="auth-container">
-              {activeTab === 'success' ? (
-                <SuccessPage
-                  username={successData?.username}
-                  message={successData?.message}
-                  onSwitchToLogin={() => {
-                    setNotification(null);
-                    setActiveTab('login');
-                  }}
-                  onGoRegisterAnother={() => {
-                    setNotification(null);
-                    setSuccessData(null);
-                    setActiveTab('register');
-                  }}
+
+          {/* Публичная форма входа */}
+          <Route
+            path="/login"
+            element={
+              <div className="auth-wrapper">
+                <div className="auth-container">
+                  <LoginForm
+                    onLogin={handleLogin}
+                    onSwitchToRegister={() => navigate('/register')}
+                    isLoading={isLoading || authLoading}
+                  />
+                </div>
+              </div>
+            }
+          />
+
+          {/* Публичная форма регистрации */}
+          <Route
+            path="/register"
+            element={
+              <div className="auth-wrapper">
+                <div className="auth-container">
+                  <RegisterForm
+                    onRegister={handleRegister}
+                    onSwitchToLogin={() => navigate('/login')}
+                    isLoading={isLoading || authLoading}
+                  />
+                </div>
+              </div>
+            }
+          />
+
+          {/* Страница успеха регистрации */}
+          <Route
+            path="/success"
+            element={
+              <div className="auth-wrapper">
+                <div className="auth-container">
+                  <SuccessPage
+                    username={successData?.username || location.state?.username}
+                    message={successData?.message || location.state?.message}
+                    onSwitchToLogin={() => navigate('/login')}
+                    onGoRegisterAnother={() => navigate('/register')}
+                  />
+                </div>
+              </div>
+            }
+          />
+
+          {/* Защищенный маршрут: Личный кабинет */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard
+                  user={currentUser}
+                  onLogout={handleLogout}
+                  backendStatus={backendStatus}
+                  onRefreshBackend={verifyBackend}
                 />
-              ) : activeTab === 'register' ? (
-                <RegisterForm
-                  onRegister={handleRegister}
-                  onSwitchToLogin={() => {
-                    setNotification(null);
-                    setActiveTab('login');
-                  }}
-                  isLoading={isLoading}
-                />
-              ) : (
-                <LoginForm
-                  onLogin={handleLogin}
-                  onSwitchToRegister={() => {
-                    setNotification(null);
-                    setActiveTab('register');
-                  }}
-                  isLoading={isLoading}
-                />
-              )}
-            </div>
-          </div>
-        )}
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Защищенный маршрут: AI-чат */}
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Перенаправление для любых неизвестных маршрутов */}
+          <Route
+            path="*"
+            element={<Navigate to={currentUser ? '/chat' : '/login'} replace />}
+          />
+        </Routes>
       </main>
 
       {/* Футер */}
@@ -310,5 +350,18 @@ export default function App() {
         </p>
       </footer>
     </div>
+  );
+}
+
+/**
+ * Корневой компонент приложения, оборачивающий дерево в Router и AuthProvider
+ */
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
