@@ -75,7 +75,31 @@ export default function Chat({
   }, []);
 
   /**
-   * Отправка сообщения пользователем
+   * Асинхронная функция, выполняющая POST-запрос к эндпоинту /api/chat бэкенда.
+   * Включает токен аутентификации пользователя (JWT/Bearer) в заголовок Authorization
+   * через переиспользуемый клиент apiClient / authFetch.
+   *
+   * @param {string} messageText - Текст сообщения
+   * @returns {Promise<string>} Текст ответа от AI-сервиса
+   */
+  const sendAuthenticatedMessage = async (messageText) => {
+    console.log(
+      `[Chat] Вызов POST /api/chat [Пользователь: "${currentUser?.username || 'Guest'}", Token: ${
+        token ? 'Присутствует' : 'Отсутствует'
+      }]`
+    );
+
+    if (onSendMessage && typeof onSendMessage === 'function') {
+      const customRes = await onSendMessage(messageText);
+      return typeof customRes === 'string' ? customRes : customRes?.response || customRes?.text || '';
+    }
+
+    const responseDto = await sendChatMessage(messageText, token);
+    return responseDto.response || 'Ответ от AI успешно получен.';
+  };
+
+  /**
+   * Обработка отправки формы пользователем
    */
   const handleSend = async (e) => {
     if (e) e.preventDefault();
@@ -95,16 +119,7 @@ export default function Chat({
     setErrorMessage(null);
 
     try {
-      console.log(`[Chat] Отправка сообщения от пользователя "${currentUser?.username || 'Guest'}": "${trimmed}"`);
-
-      let responseText = '';
-      if (onSendMessage && typeof onSendMessage === 'function') {
-        const customRes = await onSendMessage(trimmed);
-        responseText = (typeof customRes === 'string') ? customRes : (customRes?.response || customRes?.text || '');
-      } else {
-        const responseDto = await sendChatMessage(trimmed, token);
-        responseText = responseDto.response || 'Ответ от AI успешно получен.';
-      }
+      const responseText = await sendAuthenticatedMessage(trimmed);
 
       const aiMessageItem = {
         id: `ai-${Date.now()}`,
@@ -115,8 +130,17 @@ export default function Chat({
 
       setMessages((prev) => [...prev, aiMessageItem]);
     } catch (err) {
-      console.error('[Chat] Ошибка при взаимодействии с AI-сервисом:', err);
-      const displayError = err.message || 'Не удалось получить ответ от AI-сервиса. Попробуйте снова.';
+      console.error('[Chat] Ошибка при вызове защищенного эндпоинта /api/chat:', err);
+      let displayError = err.message || 'Не удалось получить ответ от AI-сервиса. Попробуйте снова.';
+
+      if (err.status === 401) {
+        displayError = 'Ошибка авторизации (401 Unauthorized): требуется действующий токен в заголовке Authorization.';
+      } else if (err.status === 400) {
+        displayError = 'Ошибка валидации (400 Bad Request): отправлено некорректное сообщение.';
+      } else if (err.status === 500) {
+        displayError = 'Ошибка сервера (500 Internal Server Error): сбой при обращении к внешнему AI-сервису.';
+      }
+
       setErrorMessage(displayError);
 
       const errorReplyItem = {

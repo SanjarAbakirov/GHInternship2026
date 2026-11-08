@@ -152,6 +152,13 @@
       - Компонент смонтирован на защищенном маршруте `/chat` через [`ProtectedRoute`](frontend/src/components/ProtectedRoute.jsx) в [`App.jsx`](frontend/src/App.jsx).
       - Обеспечена обратная совместимость через фасадный компонент [`ChatPage.jsx`](frontend/src/components/ChatPage.jsx).
       - Проверена адаптивность в стилистике Dark Glassmorphism, линтинг (`oxlint` — 0 ошибок и 0 предупреждений) и сборка (`npm run build` — 115ms), все 128 тестов бэкенда пройдены.
+    - [x] Управление состоянием и авторизованная интеграция с API (State Management and Authenticated API Integration - Frontend):
+      - В [`api.js`](frontend/src/services/api.js) разработан переиспользуемый авторизованный HTTP-клиент (`authFetch` и объект `apiClient` с методами `get`, `post`, `put`, `delete`).
+      - Реализовано автоматическое извлечение токена из `localStorage` (`gh_internship_token`) и прикрепление заголовка `Authorization: Bearer <token>` во все необходимые API-запросы.
+      - В [`Chat.jsx`](frontend/src/components/Chat.jsx) внедрено управление состоянием через `useState` для значения поля ввода (`inputMessage`), истории сообщений диалога (`messages`), статуса отправки (`isSending`) и ошибок (`errorMessage`).
+      - Реализована явная асинхронная функция `sendAuthenticatedMessage` для выполнения POST-запроса к `/api/chat` с передачей токена и обработкой статус-кодов (401 Unauthorized, 400 Bad Request, 500 Server Error).
+      - Добавлен файл-экспорт [`Chat.js`](frontend/src/components/Chat.js) для обеспечения 100% совместимости любых вариантов импорта.
+      - Проверена сборка Vite (`npm run build` — 113ms), линтер (`oxlint` — 0 ошибок и предупреждений) и полный прогон тестов бэкенда (`./mvnw test` — 128 SUCCESS).
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
