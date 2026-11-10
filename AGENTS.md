@@ -166,6 +166,18 @@
       - Настроена плавная интеллектуальная автопрокрутка к последнему сообщению через `requestAnimationFrame` + `scrollIntoView`, отслеживание позиции скролла пользователя (`handleMessagesScroll`) и плавающая кнопка «↓ Вниз» (`#chat-scroll-bottom-btn`).
       - В [`App.css`](frontend/src/App.css) добавлена анимация появления сообщений `messageSlideIn` и стили обертки скролла `.chat-messages-wrapper` и кнопки прокрутки `.scroll-to-bottom-btn`.
       - Проверена сборка (`npm run build` — 124ms), линтинг (`oxlint` — 0 предупреждений/ошибок) и бэкенд-тесты (`./mvnw test` — 128 SUCCESS).
+    - [x] Модульное и интеграционное тестирование React-компонента Chat (Unit & Integration Tests for React Chat Component - Frontend):
+      - Установлен и настроен современный тестовый стек для Vite 8 + React 19: `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event` в [`package.json`](frontend/package.json) и [`vite.config.js`](frontend/vite.config.js).
+      - Создан файл инициализации тестов [`setupTests.js`](frontend/src/setupTests.js) с подключением матчеров `jest-dom` и полифиллом `scrollIntoView` для `jsdom`.
+      - В [`AuthContext.jsx`](frontend/src/context/AuthContext.jsx) добавлен именованный экспорт `AuthContext` для гибкой подстановки состояния аутентификации в тестах.
+      - Написан комплексный набор из 6 тестов в [`Chat.test.jsx`](frontend/src/components/Chat.test.jsx):
+        - **Render Test:** проверка отрисовки поля ввода, кнопки «Отправить» (включая состояние `disabled`), области истории сообщений и приветствия с именем пользователя в авторизованном контексте.
+        - **Interaction & API Mocking Test:** имитация ввода текста и нажатия «Отправить», мокирование `fetch`, проверка корректности JSON-пейлоада `{ message }` и заголовка `Authorization: Bearer <token>`, отображение ответа AI и вызова `scrollIntoView`.
+        - **Unique Keys Test:** проверка уникальности `data-message-id` у последовательных сообщений без коллизий React-ключей.
+        - **Error Handling (401 Unauthorized):** проверка обработки 401 статуса с выводом предупреждения и разблокировкой поля ввода.
+        - **Quick Prompts & Clear Chat:** проверка вставки быстрых подсказок и сброса истории диалога.
+        - **ProtectedRoute Integration:** проверка редиректа неавторизованного пользователя на `/login` с сообщением `"You must be logged in to access the chat."` и пропуска авторизованного пользователя в `Chat`.
+      - Прогон тестов фронтенда (`npm test` — 6/6 PASSED), линтера (`oxlint` — 0 ошибок/предупреждений), сборки (`npm run build` — 114ms) и бэкенда (`./mvnw test` — 128 SUCCESS).
 
 ## Следующие шаги
 - Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.

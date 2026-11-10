@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { registerUser, loginUser } from '../services/api';
 
-const AuthContext = createContext(null);
+// eslint-disable-next-line react-refresh/only-export-components
+export const AuthContext = createContext(null);
 
 const STORAGE_KEY_USER = 'gh_internship_user';
 const STORAGE_KEY_TOKEN = 'gh_internship_token';
