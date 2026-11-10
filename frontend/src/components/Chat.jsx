@@ -1,11 +1,78 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { sendChatMessage } from '../services/api';
 
+let fallbackCounter = 0;
+
+/**
+ * Генератор гарантированно уникальных идентификаторов для React `key`.
+ * Предотвращает коллизии ключей при мгновенном добавлении нескольких сообщений подряд.
+ *
+ * @param {string} prefix - Префикс идентификатора (user, ai, err, welcome)
+ * @returns {string} Уникальный ключ
+ */
+function generateMessageId(prefix = 'msg') {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  fallbackCounter += 1;
+  return `${prefix}-${Date.now()}-${fallbackCounter}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/**
+ * Форматирование времени сообщения (ЧЧ:ММ)
+ */
+function formatTimestamp() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Мемоизированный элемент сообщения для эффективного рендеринга списка в React.
+ * Благодаря уникальному `key={msg.id}` и `React.memo` уже отрисованные реплики
+ * не перерисовываются при добавлении новых сообщений.
+ */
+const ChatMessageItem = memo(function ChatMessageItem({ msg, currentUsername }) {
+  const bubbleClass =
+    msg.sender === 'user'
+      ? 'chat-bubble-user'
+      : msg.sender === 'system'
+      ? 'chat-bubble-system'
+      : 'chat-bubble-ai';
+
+  const senderLabel =
+    msg.sender === 'user'
+      ? currentUsername || 'Вы'
+      : msg.sender === 'system'
+      ? 'Системное предупреждение'
+      : 'AI Ассистент';
+
+  const avatarContent =
+    msg.sender === 'user'
+      ? currentUsername?.charAt(0).toUpperCase() || 'U'
+      : msg.sender === 'system'
+      ? '⚠️'
+      : '🤖';
+
+  return (
+    <article className={`chat-bubble-wrapper ${bubbleClass}`} data-message-id={msg.id}>
+      <div className="chat-bubble-avatar" aria-hidden="true">
+        {avatarContent}
+      </div>
+      <div className="chat-bubble-content">
+        <div className="chat-bubble-meta">
+          <span className="chat-sender-name">{senderLabel}</span>
+          <span className="chat-message-time">{msg.timestamp}</span>
+        </div>
+        <div className="chat-bubble-text">{msg.text}</div>
+      </div>
+    </article>
+  );
+});
+
 /**
  * Переиспользуемый компонент AI-чата (Chat Component).
- * Предоставляет область отображения сообщений, поле ввода текста, кнопку отправки
- * и индикацию набора текста.
+ * Поддерживает динамическое обновление диалога (мгновенное отображение реплик пользователя
+ * и ответов AI), уникальные React ключи и автоматическую плавную прокрутку к последнему сообщению.
  *
  * @param {Object} props
  * @param {string} [props.title] - Заголовок чата
@@ -38,17 +105,20 @@ export default function Chat({
 }) {
   const { currentUser, token } = useAuth();
 
-  // Локальное состояние сообщений с поддержкой начальной инициализации
+  // Локальное состояние сообщений с гарантированной уникальностью id для React key
   const [messages, setMessages] = useState(() => {
     if (initialMessages && Array.isArray(initialMessages) && initialMessages.length > 0) {
-      return initialMessages;
+      return initialMessages.map((msg) => ({
+        ...msg,
+        id: msg.id || generateMessageId(msg.sender || 'init'),
+      }));
     }
     return [
       {
-        id: 'welcome-msg',
+        id: generateMessageId('welcome'),
         sender: 'assistant',
         text: `Здравствуйте, ${currentUser?.username || 'пользователь'}! Я интеллектуальный AI-ассистент платформы GHInternship. Чем я могу помочь вам сегодня?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: formatTimestamp(),
       },
     ];
   });
@@ -56,18 +126,48 @@ export default function Chat({
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
+  const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const shouldAutoScrollRef = useRef(true);
 
-  // Автоматический скролл вниз при появлении нового сообщения
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  /**
+   * Плавная прокрутка ленты сообщений к самому последнему элементу.
+   * Выполняется через requestAnimationFrame после фиксации обновлений в DOM.
+   */
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    requestAnimationFrame(() => {
+      if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+        messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
+      } else if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+      shouldAutoScrollRef.current = true;
+      setShowScrollButton(false);
+    });
+  }, []);
 
+  /**
+   * Мониторинг позиции скролла пользователя для интеллектуальной прокрутки
+   */
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isNearBottom = distanceFromBottom < 80;
+    shouldAutoScrollRef.current = isNearBottom;
+    setShowScrollButton(!isNearBottom);
+  }, []);
+
+  // Автоматический скролл к последнему сообщению при обновлении диалога или появлении индикатора набора текста
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isSending]);
+    if (shouldAutoScrollRef.current) {
+      console.log(`[Chat] Автопрокрутка диалога к последнему сообщению (всего сообщений: ${messages.length})`);
+      scrollToBottom('smooth');
+    }
+  }, [messages, isSending, scrollToBottom]);
 
   // Установка фокуса на поле ввода при монтировании компонента
   useEffect(() => {
@@ -99,7 +199,9 @@ export default function Chat({
   };
 
   /**
-   * Обработка отправки формы пользователем
+   * Обработка отправки формы пользователем:
+   * 1. Мгновенное добавление сообщения пользователя в историю чата.
+   * 2. Асинхронный запрос к бэкенду и добавление ответа AI в UI.
    */
   const handleSend = async (e) => {
     if (e) e.preventDefault();
@@ -107,12 +209,16 @@ export default function Chat({
     if (!trimmed || isSending) return;
 
     const userMessageItem = {
-      id: `user-${Date.now()}`,
+      id: generateMessageId('user'),
       sender: 'user',
       text: trimmed,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: formatTimestamp(),
     };
 
+    // Гарантируем прокрутку вниз при отправке нового сообщения
+    shouldAutoScrollRef.current = true;
+
+    console.log(`[Chat] Немедленное отображение сообщения пользователя в истории (id=${userMessageItem.id})`);
     setMessages((prev) => [...prev, userMessageItem]);
     setInputMessage('');
     setIsSending(true);
@@ -122,12 +228,13 @@ export default function Chat({
       const responseText = await sendAuthenticatedMessage(trimmed);
 
       const aiMessageItem = {
-        id: `ai-${Date.now()}`,
+        id: generateMessageId('ai'),
         sender: 'assistant',
         text: responseText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: formatTimestamp(),
       };
 
+      console.log(`[Chat] Ответ AI получен и добавлен в диалог (id=${aiMessageItem.id})`);
       setMessages((prev) => [...prev, aiMessageItem]);
     } catch (err) {
       console.error('[Chat] Ошибка при вызове защищенного эндпоинта /api/chat:', err);
@@ -144,10 +251,10 @@ export default function Chat({
       setErrorMessage(displayError);
 
       const errorReplyItem = {
-        id: `err-${Date.now()}`,
+        id: generateMessageId('err'),
         sender: 'system',
         text: `⚠️ Ошибка: ${displayError}`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: formatTimestamp(),
       };
       setMessages((prev) => [...prev, errorReplyItem]);
     } finally {
@@ -157,10 +264,9 @@ export default function Chat({
   };
 
   /**
-   * Подстановка быстрого промпта
+   * Подстановка быстрого промпта в поле ввода
    */
   const handleSelectQuickPrompt = (promptText) => {
-    // Убираем эмодзи в начале, если есть
     const cleanedText = promptText.replace(/^[^\wА-Яа-яЁё]+\s*/, '');
     setInputMessage(cleanedText);
     setTimeout(() => {
@@ -172,12 +278,13 @@ export default function Chat({
    * Очистка истории сообщений
    */
   const handleClearChat = () => {
+    shouldAutoScrollRef.current = true;
     setMessages([
       {
-        id: `welcome-msg-${Date.now()}`,
+        id: generateMessageId('welcome'),
         sender: 'assistant',
         text: `История диалога очищена. Чем еще я могу вам помочь, ${currentUser?.username || 'пользователь'}?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: formatTimestamp(),
       },
     ]);
     setErrorMessage(null);
@@ -240,9 +347,9 @@ export default function Chat({
         <nav className="quick-prompts-container" aria-label="Быстрые вопросы для AI">
           <span className="quick-prompts-label">Быстрые подсказки:</span>
           <div className="quick-prompts-scroll">
-            {quickPrompts.map((prompt, idx) => (
+            {quickPrompts.map((prompt) => (
               <button
-                key={`prompt-${idx}`}
+                key={`prompt-${prompt}`}
                 type="button"
                 className="quick-chip"
                 onClick={() => handleSelectQuickPrompt(prompt)}
@@ -254,70 +361,62 @@ export default function Chat({
         </nav>
       )}
 
-      {/* 3. Область отображения сообщений (Display Area for Messages) */}
-      <section
-        className="chat-messages-container"
-        role="log"
-        aria-live="polite"
-        aria-label="История сообщений"
-        id="chat-messages-display"
-      >
-        {messages.map((msg) => (
-          <article
-            key={msg.id}
-            className={`chat-bubble-wrapper ${
-              msg.sender === 'user'
-                ? 'chat-bubble-user'
-                : msg.sender === 'system'
-                ? 'chat-bubble-system'
-                : 'chat-bubble-ai'
-            }`}
+      {/* 3. Область динамического отображения сообщений (Display Area for Messages) */}
+      <div className="chat-messages-wrapper">
+        <section
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
+          className="chat-messages-container"
+          role="log"
+          aria-live="polite"
+          aria-label="История сообщений"
+          id="chat-messages-display"
+        >
+          {messages.map((msg) => (
+            <ChatMessageItem
+              key={msg.id}
+              msg={msg}
+              currentUsername={currentUser?.username}
+            />
+          ))}
+
+          {/* Анимация набора текста AI */}
+          {isSending && (
+            <div className="chat-bubble-wrapper chat-bubble-ai" aria-label="AI формирует ответ">
+              <div className="chat-bubble-avatar" aria-hidden="true">🤖</div>
+              <div className="chat-bubble-content">
+                <div className="chat-bubble-meta">
+                  <span className="chat-sender-name">AI Ассистент</span>
+                  <span className="chat-message-time">Генерация...</span>
+                </div>
+                <div className="typing-indicator" aria-label="AI думает">
+                  <span className="typing-dot"></span>
+                  <span className="typing-dot"></span>
+                  <span className="typing-dot"></span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Якорь для автоматической прокрутки к последнему сообщению */}
+          <div ref={messagesEndRef} className="chat-scroll-anchor" aria-hidden="true" />
+        </section>
+
+        {/* Плавающая кнопка возврата вниз, если пользователь прокрутил историю вверх */}
+        {showScrollButton && (
+          <button
+            type="button"
+            className="scroll-to-bottom-btn"
+            onClick={() => scrollToBottom('smooth')}
+            aria-label="Прокрутить к последнему сообщению"
+            title="К последнему сообщению"
+            id="chat-scroll-bottom-btn"
           >
-            <div className="chat-bubble-avatar" aria-hidden="true">
-              {msg.sender === 'user' ? (
-                currentUser?.username?.charAt(0).toUpperCase() || 'U'
-              ) : msg.sender === 'system' ? (
-                '⚠️'
-              ) : (
-                '🤖'
-              )}
-            </div>
-            <div className="chat-bubble-content">
-              <div className="chat-bubble-meta">
-                <span className="chat-sender-name">
-                  {msg.sender === 'user'
-                    ? currentUser?.username || 'Вы'
-                    : msg.sender === 'system'
-                    ? 'Системное предупреждение'
-                    : 'AI Ассистент'}
-                </span>
-                <span className="chat-message-time">{msg.timestamp}</span>
-              </div>
-              <div className="chat-bubble-text">{msg.text}</div>
-            </div>
-          </article>
-        ))}
-
-        {/* Анимация набора текста AI */}
-        {isSending && (
-          <div className="chat-bubble-wrapper chat-bubble-ai" aria-label="AI формирует ответ">
-            <div className="chat-bubble-avatar" aria-hidden="true">🤖</div>
-            <div className="chat-bubble-content">
-              <div className="chat-bubble-meta">
-                <span className="chat-sender-name">AI Ассистент</span>
-                <span className="chat-message-time">Генерация...</span>
-              </div>
-              <div className="typing-indicator" aria-label="AI думает">
-                <span className="typing-dot"></span>
-                <span className="typing-dot"></span>
-                <span className="typing-dot"></span>
-              </div>
-            </div>
-          </div>
+            <span>↓</span>
+            <span>Вниз</span>
+          </button>
         )}
-
-        <div ref={messagesEndRef} aria-hidden="true" />
-      </section>
+      </div>
 
       {/* Ошибка взаимодействия */}
       {errorMessage && (
@@ -384,4 +483,3 @@ export default function Chat({
     </div>
   );
 }
-
