@@ -4,6 +4,7 @@ import com.ghInternship.GHInternship2026.dto.UserRegistrationDto;
 import com.ghInternship.GHInternship2026.entity.User;
 import com.ghInternship.GHInternship2026.exception.GlobalExceptionHandler;
 import com.ghInternship.GHInternship2026.exception.UserAlreadyExistsException;
+import com.ghInternship.GHInternship2026.service.JwtService;
 import com.ghInternship.GHInternship2026.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,6 +46,9 @@ class AuthControllerTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private JwtService jwtService;
 
     @InjectMocks
     private AuthController authController;
@@ -371,11 +375,12 @@ class AuthControllerTest {
     // =========================================================================
 
     @Test
-    @DisplayName("POST /api/auth/login should return 200 OK when credentials are valid")
+    @DisplayName("POST /api/auth/login should return 200 OK with JWT token when credentials are valid")
     void login_ShouldReturn200_WhenCredentialsAreValid() throws Exception {
         User existingUser = new User(1L, "carol", "$2a$10$storedHashValue");
         when(userService.findByUsername("carol")).thenReturn(Optional.of(existingUser));
         when(passwordEncoder.matches("CarolPassword123!", "$2a$10$storedHashValue")).thenReturn(true);
+        when(jwtService.generateToken("carol")).thenReturn("mock-jwt-token-carol");
 
         String requestJson = """
                 {
@@ -388,10 +393,14 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Login successful"));
+                .andExpect(jsonPath("$.message").value("Login successful"))
+                .andExpect(jsonPath("$.token").value("mock-jwt-token-carol"))
+                .andExpect(jsonPath("$.username").value("carol"))
+                .andExpect(jsonPath("$.id").value(1));
 
         verify(userService).findByUsername("carol");
         verify(passwordEncoder).matches("CarolPassword123!", "$2a$10$storedHashValue");
+        verify(jwtService).generateToken("carol");
     }
 
     @Test

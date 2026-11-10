@@ -4,6 +4,8 @@ import com.ghInternship.GHInternship2026.dto.UserLoginDto;
 import com.ghInternship.GHInternship2026.dto.UserRegistrationDto;
 import com.ghInternship.GHInternship2026.entity.User;
 import com.ghInternship.GHInternship2026.repository.UserRepository;
+import com.ghInternship.GHInternship2026.service.JwtService;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -39,6 +42,9 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
 
     @BeforeEach
     void setUp() {
@@ -254,7 +260,7 @@ class AuthControllerIntegrationTest {
     // =========================================================================
 
     @Test
-    @DisplayName("POST /api/auth/login should return 200 OK when credentials are valid")
+    @DisplayName("POST /api/auth/login should return 200 OK with valid JWT token when credentials are valid")
     void login_ShouldReturn200_WhenCredentialsAreValid() throws Exception {
         userRepository.save(new User("carol", passwordEncoder.encode("CarolPassword123!")));
 
@@ -265,11 +271,20 @@ class AuthControllerIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Login successful"));
+                .andExpect(jsonPath("$.message").value("Login successful"))
+                .andExpect(jsonPath("$.token", notNullValue()))
+                .andExpect(jsonPath("$.username").value("carol"))
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn();
+
+        String responseJson = result.getResponse().getContentAsString();
+        String token = JsonPath.read(responseJson, "$.token");
+        assertThat(jwtService.isTokenValid(token)).isTrue();
+        assertThat(jwtService.extractUsername(token)).isEqualTo("carol");
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.ghInternship.GHInternship2026.dto.UserResponseDto;
 import com.ghInternship.GHInternship2026.entity.User;
 import com.ghInternship.GHInternship2026.exception.InvalidCredentialsException;
 import com.ghInternship.GHInternship2026.exception.ValidationException;
+import com.ghInternship.GHInternship2026.service.JwtService;
 import com.ghInternship.GHInternship2026.service.UserService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -35,10 +36,12 @@ public class AuthController {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthController(UserService userService, PasswordEncoder passwordEncoder) {
+    public AuthController(UserService userService, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     /**
@@ -103,7 +106,15 @@ public class AuthController {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        log.info("User '{}' successfully authenticated", loginDto.username());
-        return ResponseEntity.ok(new AuthResponseDto("Login successful"));
+        User authenticatedUser = optionalUser.get();
+        String jwtToken = (jwtService != null) ? jwtService.generateToken(authenticatedUser.getUsername()) : null;
+
+        log.info("User '{}' successfully authenticated", authenticatedUser.getUsername());
+        return ResponseEntity.ok(new AuthResponseDto(
+                "Login successful",
+                jwtToken,
+                authenticatedUser.getUsername(),
+                authenticatedUser.getId()
+        ));
     }
 }

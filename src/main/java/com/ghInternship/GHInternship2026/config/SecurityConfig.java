@@ -3,6 +3,7 @@ package com.ghInternship.GHInternship2026.config;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -12,6 +13,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -24,14 +26,19 @@ public class SecurityConfig {
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     private final WebConfig webConfig;
+    private final ObjectProvider<JwtAuthenticationFilter> jwtAuthenticationFilterProvider;
 
-    public SecurityConfig(WebConfig webConfig) {
+    public SecurityConfig(
+            WebConfig webConfig,
+            ObjectProvider<JwtAuthenticationFilter> jwtAuthenticationFilterProvider
+    ) {
         this.webConfig = webConfig;
+        this.jwtAuthenticationFilterProvider = jwtAuthenticationFilterProvider;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
+        http
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -59,8 +66,15 @@ public class SecurityConfig {
                                     """.formatted(LocalDateTime.now(), request.getRequestURI()));
                         }))
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/auth/**", "/register", "/api/chat/**"))
-                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
-                .build();
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
+
+        JwtAuthenticationFilter jwtFilter = jwtAuthenticationFilterProvider.getIfAvailable();
+        if (jwtFilter != null) {
+            http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            log.info("JwtAuthenticationFilter зарегистрирован в цепочке Spring Security");
+        }
+
+        return http.build();
     }
 
     @Bean

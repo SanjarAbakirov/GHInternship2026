@@ -1,15 +1,20 @@
 package com.ghInternship.GHInternship2026.controller;
 
+import com.ghInternship.GHInternship2026.repository.UserRepository;
+import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.client.RestTemplate;
 
 import static org.hamcrest.Matchers.containsString;
@@ -17,6 +22,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -32,8 +38,16 @@ class ChatControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @MockitoBean
     private RestTemplate restTemplate;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
 
     @Test
     @DisplayName("POST /api/chat without authentication should be rejected with 401 Unauthorized")
@@ -124,5 +138,100 @@ class ChatControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRegisterJson))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("E2E Authorization Flow: Register -> Login -> Obtain Real JWT -> Call POST /api/chat -> 200 OK")
+    void shouldAuthenticateWithRealJwtFromLoginAndCallChatEndpoint() throws Exception {
+        // 1. Регистрация пользователя
+        String registerJson = """
+                {
+                    "username": "jwtE2eUser",
+                    "password": "StrongPassword123!"
+                }
+                """;
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerJson))
+                .andExpect(status().isCreated());
+
+        // 2. Вход в систему и получение реального JWT-токена
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token", notNullValue()))
+                .andReturn();
+
+        String jwtToken = JsonPath.read(loginResult.getResponse().getContentAsString(), "$.token");
+
+        // 3. Мокируем внешний вызов AI API
+        when(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("""
+                        {
+                            "choices": [
+                                {
+                                    "message": {
+                                        "content": "Authenticated via real JWT filter!"
+                                    }
+                                }
+                            ]
+                        }
+                        """));
+
+        // 4. Отправка запроса на /api/chat с реальным заголовком Authorization: Bearer <jwt>
+        String chatRequestJson = """
+                {
+                    "message": "Hello via real JWT!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(chatRequestJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.response").value("Authenticated via real JWT filter!"))
+                .andExpect(jsonPath("$.timestamp", notNullValue()));
+    }
+
+    @Test
+    @DisplayName("POST /api/chat with invalid or forged Bearer JWT token should be rejected with 401 Unauthorized")
+    void shouldRejectForgedJwtTokenWith401() throws Exception {
+        String chatRequestJson = """
+                {
+                    "message": "Attempting unauthorized chat access"
+                }
+                """;
+
+        mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer forged.invalid.jwt.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(chatRequestJson))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.path").value("/api/chat"));
+
+        verifyNoInteractions(restTemplate);
+    }
+
+    @Test
+    @DisplayName("POST /api/chat with non-Bearer Authorization header should be rejected with 401 Unauthorized")
+    void shouldRejectBasicAuthHeaderWith401() throws Exception {
+        String chatRequestJson = """
+                {
+                    "message": "Attempting Basic auth"
+                }
+                """;
+
+        mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Basic dXNlcjpwYXNz")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(chatRequestJson))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+
+        verifyNoInteractions(restTemplate);
     }
 }

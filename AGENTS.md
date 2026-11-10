@@ -178,12 +178,24 @@
         - **Quick Prompts & Clear Chat:** проверка вставки быстрых подсказок и сброса истории диалога.
         - **ProtectedRoute Integration:** проверка редиректа неавторизованного пользователя на `/login` с сообщением `"You must be logged in to access the chat."` и пропуска авторизованного пользователя в `Chat`.
       - Прогон тестов фронтенда (`npm test` — 6/6 PASSED), линтера (`oxlint` — 0 ошибок/предупреждений), сборки (`npm run build` — 114ms) и бэкенда (`./mvnw test` — 128 SUCCESS).
+4. **Неделя №6 (Deliverable for Week 6 — Сквозная защищенная JWT-аутентификация и AI-чат Full-Stack):**
+   - [x] Подключена библиотека JJWT (`io.jsonwebtoken:jjwt-api`, `jjwt-impl`, `jjwt-jackson` версии `0.12.6`) в [`pom.xml`](pom.xml).
+   - [x] Добавлены настройки JWT (`jwt.secret`, `jwt.expiration-ms`) с поддержкой переменных окружения `JWT_SECRET` и `JWT_EXPIRATION_MS` в [`application.properties.example`](src/main/resources/application.properties.example) и локальный `application.properties` (исключен из Git).
+   - [x] Создан сервис [`JwtService`](src/main/java/com/ghInternship/GHInternship2026/service/JwtService.java): генерация и криптографическая проверка JWT-токенов (HMAC-SHA256), валидация подписи и срока действия, извлечение subject/claims.
+   - [x] Создан сервис [`CustomUserDetailsService`](src/main/java/com/ghInternship/GHInternship2026/service/CustomUserDetailsService.java): реализация `UserDetailsService` для загрузки учетной записи из [`UserRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/UserRepository.java).
+   - [x] Создан фильтр [`JwtAuthenticationFilter`](src/main/java/com/ghInternship/GHInternship2026/config/JwtAuthenticationFilter.java): проверка заголовка `Authorization: Bearer <token>`, валидация JWT и установка аутентификации в `SecurityContextHolder`, безопасное отклонение просроченных и подделанных токенов.
+   - [x] Обновлен [`SecurityConfig`](src/main/java/com/ghInternship/GHInternship2026/config/SecurityConfig.java): фильтр `JwtAuthenticationFilter` зарегистрирован перед `UsernamePasswordAuthenticationFilter`.
+   - [x] Обновлен [`AuthResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/AuthResponseDto.java) и [`AuthController`](src/main/java/com/ghInternship/GHInternship2026/controller/AuthController.java): эндпоинт `POST /api/auth/login` при успешной авторизации генерирует и возвращает реальный JWT-токен (`token`, `username`, `id`).
+   - [x] Добавлены модульные тесты новой логики авторизации: [`JwtServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/JwtServiceTest.java), [`CustomUserDetailsServiceTest`](src/test/java/com/ghInternship/GHInternship2026/service/CustomUserDetailsServiceTest.java), [`JwtAuthenticationFilterTest`](src/test/java/com/ghInternship/GHInternship2026/config/JwtAuthenticationFilterTest.java).
+   - [x] Расширены сквозные интеграционные тесты [`AuthControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/AuthControllerIntegrationTest.java) и [`ChatControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerIntegrationTest.java): сквозной сценарий `Register -> Login -> Real JWT -> POST /api/chat (200 OK)`, а также проверка отклонения подделанных (`Bearer forged...`) и `Basic`-токенов со статусом `401 Unauthorized`.
+   - [x] Расширены тесты фронтенда: добавлены модульные тесты [`api.test.js`](frontend/src/services/api.test.js) (автоприкрепление токена в `authFetch`/`apiClient`) и [`AuthContext.test.jsx`](frontend/src/context/AuthContext.test.jsx) (сохранение и очистка JWT-токена в `localStorage`) — всего 12 тестов Vitest + React Testing Library успешно проходят.
+   - [x] Обновлен CI/CD пайплайн [`.github/workflows/ci.yml`](.github/workflows/ci.yml): добавлена отдельная джоба `frontend` для автоматического запуска `oxlint`, `npm test` (Vitest) и `npm run build` (Vite) наряду с `./mvnw clean verify`.
+   - [x] Полная верификация пройдена успешно: **146/146** тестов бэкенда (`./mvnw clean verify`), **12/12** тестов фронтенда (`npm test`), **0 предупреждений/ошибок** линтера (`oxlint`) и успешная сборка обеих частей приложения.
 
 ## Следующие шаги
-- Генерация JWT-токенов при успешной аутентификации в `POST /api/auth/login`.
-- Добавление `JwtAuthenticationFilter` в цепочку безопасности Spring Security.
-- Настройка `UserDetailsService` для загрузки пользователей по логину.
-- Сохранение JWT-токена в `localStorage`/`HttpOnly cookie` на фронтенде и прикрепление заголовка `Authorization: Bearer <token>` к защищенным запросам.
+- Проверить работоспособность в живом окружении с реальным AI API-ключом (переменные `AI_SERVICE_API_KEY` и `JWT_SECRET`).
+- При необходимости добавить сохранение истории сообщений чата в базе данных (JPA сущность `ChatMessage` со связью к `User`).
+- Подготовка к развертыванию (Production Dockerfile / Render / Railway / Firebase Hosting).
 
 
 
