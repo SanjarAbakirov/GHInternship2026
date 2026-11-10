@@ -72,3 +72,4 @@ class CustomUserDetailsServiceTest {
         verifyNoInteractions(userRepository);
     }
 }
+

@@ -98,3 +98,4 @@ describe('AuthContext Unit & Integration Tests', () => {
     expect(localStorage.getItem('gh_internship_user')).toBeNull();
   });
 });
+
