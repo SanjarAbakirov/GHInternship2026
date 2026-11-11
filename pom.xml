@@ -68,11 +68,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- In-memory БД H2 используется для изолированных модульных и интеграционных тестов / CI -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- PostgreSQL JDBC Driver (управляемая Spring Boot 4.0.0 версия 42.7.8, совместима с PostgreSQL 16+ и Hibernate 7.1) -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
