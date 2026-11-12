@@ -12,6 +12,7 @@ Thumbs.db
 application.properties
 **/src/main/resources/application.properties
 !**/src/main/resources/application.properties.example
+!**/src/test/resources/application.properties
 
 ### Crash / Heap Dumps ###
 *.hprof

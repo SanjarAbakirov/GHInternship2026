@@ -11,7 +11,8 @@ Backend-приложение на **Java & Spring Boot**, разрабатыва
   * **Spring Web (MVC):** создание RESTful API эндпоинтов
   * **Spring Security:** защита приложения и управление доступом
   * **Spring Data JPA:** персистентность данных и работа с репозиториями
-* **База данных:** H2 Database (in-memory, разработка и тестирование)
+* **База данных:** PostgreSQL 16 (основная БД для персистентного хранения) + H2 Database (изолированные автотесты и CI)
+* **Фронтенд:** React 19 + Vite 8 + React Router DOM + Vitest / React Testing Library
 * **Инструмент сборки:** Apache Maven (с использованием `mvnw` wrapper)
 * **Утилиты:** Project Lombok
 
@@ -33,7 +34,23 @@ git clone https://github.com/SanjarAbakirov/GHInternship2026.git
 cd GHInternship2026
 ```
 
-### 2. Сборка и запуск тестов
+### 2. Настройка PostgreSQL 16 и переменных окружения
+Создайте локальные файлы конфигурации из шаблонов (они исключены из Git в `.gitignore`):
+```bash
+cp .env.example .env
+cp src/main/resources/application.properties.example src/main/resources/application.properties
+```
+Запустите PostgreSQL 16 через Docker Compose или локально через Homebrew:
+```bash
+# Вариант A: Docker Compose
+docker compose up -d
+
+# Вариант B: Локальный PostgreSQL 16 (macOS / Homebrew)
+brew services start postgresql@16
+```
+> При необходимости запуска без установленного PostgreSQL используйте временный H2-профиль: `./mvnw spring-boot:run -Dspring-boot.run.profiles=h2`.
+
+### 3. Сборка и запуск тестов
 ```bash
 # Компиляция исходного кода
 ./mvnw clean compile
@@ -42,7 +59,7 @@ cd GHInternship2026
 ./mvnw test
 ```
 
-### 3. Запуск приложения
+### 4. Запуск приложения
 ```bash
 ./mvnw spring-boot:run
 ```

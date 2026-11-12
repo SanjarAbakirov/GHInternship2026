@@ -191,11 +191,22 @@
    - [x] Расширены тесты фронтенда: добавлены модульные тесты [`api.test.js`](frontend/src/services/api.test.js) (автоприкрепление токена в `authFetch`/`apiClient`) и [`AuthContext.test.jsx`](frontend/src/context/AuthContext.test.jsx) (сохранение и очистка JWT-токена в `localStorage`) — всего 12 тестов Vitest + React Testing Library успешно проходят.
    - [x] Обновлен CI/CD пайплайн [`.github/workflows/ci.yml`](.github/workflows/ci.yml): добавлена отдельная джоба `frontend` для автоматического запуска `oxlint`, `npm test` (Vitest) и `npm run build` (Vite) наряду с `./mvnw clean verify`.
    - [x] Полная верификация пройдена успешно: **146/146** тестов бэкенда (`./mvnw clean verify`), **12/12** тестов фронтенда (`npm test`), **0 предупреждений/ошибок** линтера (`oxlint`) и успешная сборка обеих частей приложения.
+5. **Неделя №7–8 (Database Migration and Chat Persistence):**
+   - [x] **1. PostgreSQL Dependency and Database Setup (Backend):**
+     - Подтверждена совместимость драйвера `org.postgresql:postgresql` (`42.7.8`, управляемого BOM Spring Boot 4.0.0) в [`pom.xml`](pom.xml) с PostgreSQL 16 и Hibernate 7.1.8 (`PostgreSQLDialect`).
+     - Установлен и запущен локальный экземпляр **PostgreSQL 16.15** через Homebrew (`brew services start postgresql@16`).
+     - Созданы выделенная база данных `gh_internship_db` и отдельный пользователь приложения `gh_app_user` с правами владельца на БД и схему `public`.
+     - Подготовлена переносимая Docker-инфраструктура: [`docker-compose.yml`](docker-compose.yml) (сервис `postgres:16-alpine` с healthcheck и named volume), [`docker/postgres/init.sql`](docker/postgres/init.sql) и шаблон [`.env.example`](.env.example).
+     - Настроено безопасное хранение учетных данных БД через переменные окружения (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`) в [`application.properties.example`](src/main/resources/application.properties.example); локальные `application.properties` и `.env` защищены от попадания в Git через [`.gitignore`](.gitignore).
+     - Изолирована тестовая среда H2 в [`src/test/resources/application.properties`](src/test/resources/application.properties) (явно разрешена к отслеживанию в `.gitignore` через `!**/src/test/resources/application.properties` для прохождения автотестов в CI) и добавлен опциональный профиль [`application-h2.properties`](src/main/resources/application-h2.properties).
+     - Обновлен файл [`README.md`](README.md) с инструкциями по настройке PostgreSQL 16 и переменных окружения.
+     - Добавлены модульные тесты [`PostgreSqlConfigurationTest`](src/test/java/com/ghInternship/GHInternship2026/config/PostgreSqlConfigurationTest.java) и проверен реальный запуск приложения (`java -jar ...`) против живой БД PostgreSQL 16 (создана таблица `users`, `HTTP 200 /hello`). Все **150 тестов** бэкенда (`./mvnw clean verify`) успешно пройдены.
 
 ## Следующие шаги
+- Проектирование и создание JPA-сущности `ChatMessage` (связь `@ManyToOne` с `User`, текст сообщения, роль/отправитель, `timestamp`) и репозитория `ChatMessageRepository` для сохранения истории чата в PostgreSQL.
+- Реализация эндпоинтов получения и сохранения истории переписки пользователя (`GET /api/chat/history`, интеграция в `ChatServiceImpl`).
+- Отображение загруженной с сервера истории чата при входе пользователя в React-компоненте `Chat`.
 - Проверить работоспособность в живом окружении с реальным AI API-ключом (переменные `AI_SERVICE_API_KEY` и `JWT_SECRET`).
-- При необходимости добавить сохранение истории сообщений чата в базе данных (JPA сущность `ChatMessage` со связью к `User`).
-- Подготовка к развертыванию (Production Dockerfile / Render / Railway / Firebase Hosting).
 
 
 
