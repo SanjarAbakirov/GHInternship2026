@@ -48,7 +48,27 @@ docker compose up -d
 # Вариант B: Локальный PostgreSQL 16 (macOS / Homebrew)
 brew services start postgresql@16
 ```
-> При необходимости запуска без установленного PostgreSQL используйте временный H2-профиль: `./mvnw spring-boot:run -Dspring-boot.run.profiles=h2`.
+
+#### Формат JDBC URL и управление схемой (Hibernate DDL Auto):
+* **JDBC URL:** `jdbc:postgresql://<host>:<port>/<database>` (по умолчанию: `jdbc:postgresql://localhost:5432/gh_internship_db`).
+* **Управление схемой (`spring.jpa.hibernate.ddl-auto`):**
+  * `update` (для `dev`): автоматически синхронизирует и дополняет таблицы/колонки без удаления данных.
+  * `validate` (для `prod`): безопасный режим строгого контроля схемы — проверяет соответствие таблиц сущностям JPA без мутаций схемы (fail-fast).
+
+#### Доступные Spring-профили:
+```bash
+# 1. По умолчанию (чтение из application.properties / переменных окружения)
+./mvnw spring-boot:run
+
+# 2. Профиль разработки dev (PostgreSQL, ddl-auto=update, форматированный SQL-лог)
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+
+# 3. Профиль продакшена prod (PostgreSQL, ddl-auto=validate, скрытые логи)
+./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
+
+# 4. Временный fallback-профиль h2 (In-memory H2 для запуска без локального PostgreSQL)
+./mvnw spring-boot:run -Dspring-boot.run.profiles=h2
+```
 
 ### 3. Сборка и запуск тестов
 ```bash

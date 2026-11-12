@@ -202,11 +202,24 @@
      - Обновлен файл [`README.md`](README.md) с инструкциями по настройке PostgreSQL 16 и переменных окружения.
      - Добавлены модульные тесты [`PostgreSqlConfigurationTest`](src/test/java/com/ghInternship/GHInternship2026/config/PostgreSqlConfigurationTest.java) и проверен реальный запуск приложения (`java -jar ...`) против живой БД PostgreSQL 16 (создана таблица `users`, `HTTP 200 /hello`). Все **150 тестов** бэкенда (`./mvnw clean verify`) успешно пройдены.
 
+    - [x] **2. Datasource Configuration for PostgreSQL (Backend):**
+      - Настроены свойства DataSource для PostgreSQL в [`application.properties`](src/main/resources/application.properties) и шаблоне [`application.properties.example`](src/main/resources/application.properties.example): `spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/gh_internship_db}`, `spring.datasource.username=${DB_USERNAME:gh_app_user}`, `spring.datasource.password=${DB_PASSWORD:...}`, `spring.datasource.driver-class-name=org.postgresql.Driver`.
+      - Спецификация JDBC URL строго следует правилу `jdbc:postgresql://<host>:<port>/<database>`.
+      - Настроено свойство `spring.jpa.hibernate.ddl-auto`: режим `update` для локальной разработки (безопасное добавление таблиц и колонок без затирания данных) и режим `validate` для продакшена (строгая валидация соответствия схемы без внесения изменений, fail-fast).
+      - Созданы выделенные Spring-профили для разделения сред:
+        - [`application-dev.properties`](src/main/resources/application-dev.properties): локальная разработка с `ddl-auto=update` и форматированным логированием SQL (`spring.jpa.show-sql=true`).
+        - [`application-prod.properties`](src/main/resources/application-prod.properties): продакшен-окружение с `ddl-auto=validate`, скрытыми SQL-логами и обязательным получением параметров подключения через переменные окружения.
+      - H2 Web Console отключена по умолчанию (`spring.h2.console.enabled=false`) для PostgreSQL-конфигураций и изолирована исключительно в профиле [`application-h2.properties`](src/main/resources/application-h2.properties).
+      - Расширен тестовый класс [`PostgreSqlConfigurationTest`](src/test/java/com/ghInternship/GHInternship2026/config/PostgreSqlConfigurationTest.java): добавлены тесты синтаксиса JDBC URL, параметров профилей `dev` и `prod`, флага `validate`, отключения консоли H2 и безопасности хранения учетных данных.
+      - Успешно пройдены все **153 теста** бэкенда (`./mvnw clean test`) и **12 тестов** фронтенда (`npm test`).
+
 ## Следующие шаги
-- Проектирование и создание JPA-сущности `ChatMessage` (связь `@ManyToOne` с `User`, текст сообщения, роль/отправитель, `timestamp`) и репозитория `ChatMessageRepository` для сохранения истории чата в PostgreSQL.
-- Реализация эндпоинтов получения и сохранения истории переписки пользователя (`GET /api/chat/history`, интеграция в `ChatServiceImpl`).
-- Отображение загруженной с сервера истории чата при входе пользователя в React-компоненте `Chat`.
-- Проверить работоспособность в живом окружении с реальным AI API-ключом (переменные `AI_SERVICE_API_KEY` и `JWT_SECRET`).
+- **3. JPA Entity & Repository for Chat History:**
+  - Создание JPA-сущности `ChatMessage` (связь `@ManyToOne` с `User`, `messageText`, `senderRole`, `timestamp`) и репозитория `ChatMessageRepository`.
+- **4. Chat Service Persistence Integration & History API:**
+  - Расширение `ChatServiceImpl` для персистентности сообщений и добавление эндпоинта `GET /api/chat/history`.
+- **5. Frontend Chat History Loading & Continuity:**
+  - Загрузка и бесшовное отображение истории сообщений в React-компоненте `Chat.jsx`.
 
 
 
