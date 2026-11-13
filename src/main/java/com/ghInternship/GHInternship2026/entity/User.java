@@ -1,11 +1,15 @@
 package com.ghInternship.GHInternship2026.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -21,6 +25,9 @@ public class User {
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ChatSession> chatSessions = new ArrayList<>();
 
     /**
      * Конструктор без параметров, обязательный по спецификации JPA.
@@ -69,6 +76,28 @@ public class User {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public List<ChatSession> getChatSessions() {
+        return chatSessions;
+    }
+
+    public void setChatSessions(List<ChatSession> chatSessions) {
+        this.chatSessions = (chatSessions != null) ? chatSessions : new ArrayList<>();
+    }
+
+    public void addChatSession(ChatSession session) {
+        if (session != null) {
+            this.chatSessions.add(session);
+            session.setUser(this);
+        }
+    }
+
+    public void removeChatSession(ChatSession session) {
+        if (session != null) {
+            this.chatSessions.remove(session);
+            session.setUser(null);
+        }
     }
 
     // --- equals, hashCode и toString ---

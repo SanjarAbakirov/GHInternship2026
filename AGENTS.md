@@ -213,13 +213,22 @@
       - Расширен тестовый класс [`PostgreSqlConfigurationTest`](src/test/java/com/ghInternship/GHInternship2026/config/PostgreSqlConfigurationTest.java): добавлены тесты синтаксиса JDBC URL, параметров профилей `dev` и `prod`, флага `validate`, отключения консоли H2 и безопасности хранения учетных данных.
       - Успешно пройдены все **153 теста** бэкенда (`./mvnw clean test`) и **12 тестов** фронтенда (`npm test`).
 
+    - [x] **3. Create Chat Persistence Models (Backend):**
+      - Разработана JPA-сущность [`ChatSession`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatSession.java): представляет отдельную сессию диалога пользователя с AI. Содержит уникальный первичный ключ `id`, заголовок `title` (с автоматической генерацией темы по первому сообщению `generateTitleFromMessage`), временную метку `createdAt` (`timestamp`), отношение `@ManyToOne` к [`User`](src/main/java/com/ghInternship/GHInternship2026/entity/User.java) и отношение `@OneToMany` к [`ChatMessage`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatMessage.java) с `CascadeType.ALL` и `orphanRemoval = true`.
+      - Разработана JPA-сущность [`ChatMessage`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatMessage.java): хранит текст сообщения `content` (`columnDefinition = "TEXT"` для поддержки длинных ответов AI), временную метку `timestamp`, роль отправителя `senderRole` (`"user"` или `"ai"`), отношение `@ManyToOne` к [`ChatSession`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatSession.java), фабричные методы `userMessage` и `aiMessage`.
+      - Сущность [`User`](src/main/java/com/ghInternship/GHInternship2026/entity/User.java) расширена отношением `@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)` к списку сессий `chatSessions` с вспомогательными методами `addChatSession` и `removeChatSession`.
+      - Созданы Spring Data JPA репозитории [`ChatSessionRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/ChatSessionRepository.java) (`findByUserOrderByCreatedAtDesc`, `findByIdAndUser`) и [`ChatMessageRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/ChatMessageRepository.java) (`findBySessionOrderByTimestampAsc`).
+      - Написаны модульные тесты сущностей [`ChatSessionTest`](src/test/java/com/ghInternship/GHInternship2026/entity/ChatSessionTest.java) и [`ChatMessageTest`](src/test/java/com/ghInternship/GHInternship2026/entity/ChatMessageTest.java).
+      - Написан комплексный интеграционный тест персистентности [`ChatPersistenceIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/repository/ChatPersistenceIntegrationTest.java): проверка каскадного сохранения сообщений при сохранении сессии (`CascadeType.ALL`), каскадного удаления (`cascade delete`), удаления отвязанных сообщений (`orphanRemoval`), хронологической сортировки сообщений и строгой изоляции данных между пользователями.
+      - Проверена живая генерация таблиц в PostgreSQL 16: созданы таблицы `chat_sessions` и `chat_messages` с внешними ключами и индексами.
+      - Все **171 тест** бэкенда (`./mvnw clean test`) и **12 тестов** фронтенда (`npm test`) завершились со 100% успехом.
+
 ## Следующие шаги
-- **3. JPA Entity & Repository for Chat History:**
-  - Создание JPA-сущности `ChatMessage` (связь `@ManyToOne` с `User`, `messageText`, `senderRole`, `timestamp`) и репозитория `ChatMessageRepository`.
-- **4. Chat Service Persistence Integration & History API:**
-  - Расширение `ChatServiceImpl` для персистентности сообщений и добавление эндпоинта `GET /api/chat/history`.
+- **4. Chat Service Persistence Integration & History API (Backend):**
+  - Обновление `ChatServiceImpl`: сохранение входящего сообщения пользователя и сгенерированного ответа AI в активную сессию `ChatSession` в PostgreSQL.
+  - Добавление эндпоинта `GET /api/chat/history` (или `GET /api/chat/sessions`) в `ChatController` для получения истории диалогов авторизованного пользователя.
 - **5. Frontend Chat History Loading & Continuity:**
-  - Загрузка и бесшовное отображение истории сообщений в React-компоненте `Chat.jsx`.
+  - Добавление функции `getChatHistory()` в `api.js` и автозагрузка истории сообщений при входе в React-компонент `Chat.jsx`.
 
 
 
