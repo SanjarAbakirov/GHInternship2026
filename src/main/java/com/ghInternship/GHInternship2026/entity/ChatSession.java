@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
@@ -31,7 +32,8 @@ import java.util.Objects;
 @Entity
 @Table(name = "chat_sessions", indexes = {
         @Index(name = "idx_chat_sessions_user_id", columnList = "user_id"),
-        @Index(name = "idx_chat_sessions_created_at", columnList = "created_at")
+        @Index(name = "idx_chat_sessions_created_at", columnList = "created_at"),
+        @Index(name = "idx_chat_sessions_updated_at", columnList = "updated_at")
 })
 public class ChatSession {
 
@@ -51,6 +53,12 @@ public class ChatSession {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * Время последней активности (отправки сообщения или обновления сессии).
+     */
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("timestamp ASC")
@@ -81,16 +89,25 @@ public class ChatSession {
         this.user = user;
         this.title = (title != null && !title.isBlank()) ? title.trim() : DEFAULT_TITLE;
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
     }
 
     /**
-     * Полный конструктор со всеми полями.
+     * Конструктор со всеми базовыми полями.
      */
     public ChatSession(Long id, User user, String title, LocalDateTime createdAt) {
+        this(id, user, title, createdAt, createdAt);
+    }
+
+    /**
+     * Полный конструктор со всеми полями и временем последней активности.
+     */
+    public ChatSession(Long id, User user, String title, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.user = user;
         this.title = (title != null && !title.isBlank()) ? title.trim() : DEFAULT_TITLE;
         this.createdAt = (createdAt != null) ? createdAt : LocalDateTime.now();
+        this.updatedAt = (updatedAt != null) ? updatedAt : this.createdAt;
     }
 
     @PrePersist
@@ -98,15 +115,23 @@ public class ChatSession {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+        if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
         if (this.title == null || this.title.isBlank()) {
             this.title = DEFAULT_TITLE;
         }
     }
 
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
     // --- Управление связью с сообщениями (Bidirectional Helpers) ---
 
     /**
-     * Добавить сообщение в сессию с синхронизацией обратной ссылки.
+     * Добавить сообщение в сессию с синхронизацией обратной ссылки и обновлением времени активности.
      *
      * @param message сообщение для добавления
      */
@@ -114,6 +139,7 @@ public class ChatSession {
         if (message != null) {
             this.messages.add(message);
             message.setSession(this);
+            this.updatedAt = (message.getTimestamp() != null) ? message.getTimestamp() : LocalDateTime.now();
         }
     }
 
@@ -195,6 +221,28 @@ public class ChatSession {
         this.createdAt = timestamp;
     }
 
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    /**
+     * Алиас для {@link #getUpdatedAt()} — время наиболее недавней активности в диалоге.
+     */
+    public LocalDateTime getLastActivityAt() {
+        return updatedAt;
+    }
+
+    /**
+     * Алиас для {@link #setUpdatedAt(LocalDateTime)}.
+     */
+    public void setLastActivityAt(LocalDateTime lastActivityAt) {
+        this.updatedAt = lastActivityAt;
+    }
+
     public List<ChatMessage> getMessages() {
         return messages;
     }
@@ -224,6 +272,7 @@ public class ChatSession {
                 "id=" + id +
                 ", title='" + title + '\'' +
                 ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
                 ", messagesCount=" + messages.size() +
                 '}';
     }

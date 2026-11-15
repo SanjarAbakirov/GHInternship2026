@@ -79,6 +79,21 @@ class ChatSessionTest {
     }
 
     @Test
+    @DisplayName("addMessage should update updatedAt / lastActivityAt with message timestamp")
+    void addMessageShouldUpdateLastActivityAt() {
+        ChatSession session = new ChatSession(new User("user", "hash"));
+        LocalDateTime past = LocalDateTime.now().minusHours(2);
+        session.setUpdatedAt(past);
+
+        LocalDateTime msgTime = LocalDateTime.now();
+        ChatMessage msg = new ChatMessage(session, "user", "Привет", msgTime);
+        session.addMessage(msg);
+
+        assertThat(session.getUpdatedAt()).isEqualTo(msgTime);
+        assertThat(session.getLastActivityAt()).isEqualTo(msgTime);
+    }
+
+    @Test
     @DisplayName("equals and hashCode should be based on ID identity")
     void equalsAndHashCodeShouldFollowJpaBestPractices() {
         User user = new User("user", "hash");

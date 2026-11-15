@@ -223,12 +223,29 @@
       - Проверена живая генерация таблиц в PostgreSQL 16: созданы таблицы `chat_sessions` и `chat_messages` с внешними ключами и индексами.
       - Все **171 тест** бэкенда (`./mvnw clean test`) и **12 тестов** фронтенда (`npm test`) завершились со 100% успехом.
 
+    - [x] **4. Create JPA Repositories for Chat Entities (Backend):**
+      - Расширен интерфейс [`ChatSessionRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/ChatSessionRepository.java) (`JpaRepository<ChatSession, Long>`):
+        - Стандартные CRUD-операции (`save`, `findById`, `findAll`, `count`, `delete`).
+        - Кастомные методы выборки сессий конкретного пользователя: `findByUserOrderByCreatedAtDesc`, `findByUserIdOrderByCreatedAtDesc`, `findByUserOrderByUpdatedAtDesc`, `findByUserIdOrderByUpdatedAtDesc`.
+        - Реализован кастомный JPQL-запрос для сортировки по наиболее недавней активности: `findByUserOrderByMostRecentActivityDesc` (динамический расчет по `MAX(m.timestamp)` сообщений сессии с фоллбэком на `updatedAt`/`createdAt`).
+        - Методы безопасной проверки принадлежности и изоляции данных: `findByIdAndUser`, `findByIdAndUserId`, `existsByIdAndUser`, `existsByIdAndUserId`, `countByUser`, `countByUserId`, `deleteByIdAndUser`, `deleteByIdAndUserId`.
+      - Расширен интерфейс [`ChatMessageRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/ChatMessageRepository.java) (`JpaRepository<ChatMessage, Long>`):
+        - Стандартные CRUD-операции (`save`, `findById`, `findAll`, `count`, `delete`).
+        - Хронологическая выборка сообщений: `findBySessionOrderByTimestampAsc` (прямой порядок) и `findBySessionOrderByTimestampDesc` (обратный порядок).
+        - Поиск последнего сообщения в диалоге для превью ленты: `findFirstBySessionOrderByTimestampDesc`.
+        - Подсчет и очистка сообщений сессии: `countBySession`, `countBySessionId`, `deleteBySession`, `deleteBySessionId`.
+      - В сущность [`ChatSession`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatSession.java) добавлено поле `updatedAt` (`@Column(name = "updated_at", nullable = false)`), индекс `idx_chat_sessions_updated_at`, хуки `@PrePersist` / `@PreUpdate`, автообновление времени при вызове `addMessage(...)`, а также алиасы `getLastActivityAt()` и `setLastActivityAt()`.
+      - Созданы выделенные тесты репозиториев:
+        - [`ChatSessionRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/ChatSessionRepositoryTest.java): верификация CRUD, сортировки по дате создания, сортировки по наиболее недавней активности сообщений (`findByUserOrderByMostRecentActivityDesc`), изоляции арендаторов (`findByIdAndUser`), подсчета сессий.
+        - [`ChatMessageRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/ChatMessageRepositoryTest.java): верификация CRUD, выборки в прямом и обратном хронологическом порядке, извлечения последнего сообщения, подсчета и каскадного удаления сообщений сессии.
+      - Все **182 теста** бэкенда (`./mvnw clean verify`) и **12 тестов** фронтенда (`npm test`) завершились со 100% успехом.
+
 ## Следующие шаги
-- **4. Chat Service Persistence Integration & History API (Backend):**
-  - Обновление `ChatServiceImpl`: сохранение входящего сообщения пользователя и сгенерированного ответа AI в активную сессию `ChatSession` в PostgreSQL.
+- **5. Chat Service Persistence Integration & History API (Backend):**
+  - Обновление `ChatServiceImpl`: автоматическое создание/получение сессии `ChatSession` и сохранение сообщений пользователя и AI в PostgreSQL.
   - Добавление эндпоинта `GET /api/chat/history` (или `GET /api/chat/sessions`) в `ChatController` для получения истории диалогов авторизованного пользователя.
-- **5. Frontend Chat History Loading & Continuity:**
-  - Добавление функции `getChatHistory()` в `api.js` и автозагрузка истории сообщений при входе в React-компонент `Chat.jsx`.
+- **6. Frontend Chat History Loading & Continuity:**
+  - Добавление функции `getChatHistory()` в `api.js` и автозагрузка сохраненной истории сообщений при монтировании React-компонента `Chat.jsx`.
 
 
 
