@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -78,12 +79,13 @@ class ChatControllerTest {
     @WithMockUser(username = "authorizedUser")
     @DisplayName("POST /api/chat with authorized user should return 200 OK and ChatResponseDto")
     void shouldReturn200_WhenAuthorizedAndValidMessage() throws Exception {
-        ChatResponseDto expectedResponse = new ChatResponseDto("Mock AI response text", LocalDateTime.now());
-        when(chatService.processMessage(any(ChatRequestDto.class))).thenReturn(expectedResponse);
+        ChatResponseDto expectedResponse = new ChatResponseDto(77L, "Mock AI response text", LocalDateTime.now());
+        when(chatService.processMessage(any(ChatRequestDto.class), any())).thenReturn(expectedResponse);
 
         String json = """
                 {
-                    "message": "Explain Spring Security filter chain"
+                    "message": "Explain Spring Security filter chain",
+                    "chatSessionId": 77
                 }
                 """;
 
@@ -91,10 +93,11 @@ class ChatControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chatSessionId").value(77))
                 .andExpect(jsonPath("$.response").value("Mock AI response text"))
                 .andExpect(jsonPath("$.timestamp", notNullValue()));
 
-        verify(chatService).processMessage(any(ChatRequestDto.class));
+        verify(chatService).processMessage(any(ChatRequestDto.class), eq("authorizedUser"));
     }
 
     // =========================================================================

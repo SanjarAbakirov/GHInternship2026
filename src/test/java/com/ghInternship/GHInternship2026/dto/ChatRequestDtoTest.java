@@ -57,5 +57,18 @@ class ChatRequestDtoTest {
         assertThat(violations).isNotEmpty();
         assertThat(violations).anyMatch(v -> v.getMessage().contains("between 1 and 2000 characters"));
     }
+
+    @Test
+    @DisplayName("ChatRequestDto should support optional chatSessionId and alias sessionId()")
+    void shouldSupportChatSessionId() {
+        ChatRequestDto withSession = new ChatRequestDto("Hello again", 42L);
+        assertThat(withSession.message()).isEqualTo("Hello again");
+        assertThat(withSession.chatSessionId()).isEqualTo(42L);
+        assertThat(withSession.sessionId()).isEqualTo(42L);
+
+        ChatRequestDto withoutSession = new ChatRequestDto("First message");
+        assertThat(withoutSession.chatSessionId()).isNull();
+        assertThat(withoutSession.sessionId()).isNull();
+    }
 }
 

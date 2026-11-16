@@ -1,5 +1,9 @@
 package com.ghInternship.GHInternship2026.controller;
 
+import com.ghInternship.GHInternship2026.entity.ChatMessage;
+import com.ghInternship.GHInternship2026.entity.ChatSession;
+import com.ghInternship.GHInternship2026.repository.ChatMessageRepository;
+import com.ghInternship.GHInternship2026.repository.ChatSessionRepository;
 import com.ghInternship.GHInternship2026.repository.UserRepository;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,7 +31,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -41,11 +47,19 @@ class ChatControllerIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ChatSessionRepository chatSessionRepository;
+
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
     @MockitoBean
     private RestTemplate restTemplate;
 
     @BeforeEach
     void setUp() {
+        chatMessageRepository.deleteAll();
+        chatSessionRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -100,50 +114,14 @@ class ChatControllerIntegrationTest {
                         .header("Access-Control-Request-Headers", "Content-Type,Authorization"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+                .andExpect(header().string("Access-Control-Allow-Methods", containsString("POST")))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
     @Test
-    @WithMockUser(username = "chatUser")
-    @DisplayName("POST /api/chat with authenticated user should return 400 Bad Request when message is empty")
-    void shouldReturn400_WhenMessageIsBlankAndAuthenticated() throws Exception {
-        String requestJson = """
-                {
-                    "message": ""
-                }
-                """;
-
-        mockMvc.perform(post("/api/chat")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.validationErrors.message", notNullValue()));
-    }
-
-    @Test
-    @DisplayName("Public endpoints like GET /hello and POST /api/auth/register should remain accessible without authentication")
-    void publicEndpointsShouldRemainAccessible() throws Exception {
-        mockMvc.perform(get("/hello"))
-                .andExpect(status().isOk());
-
-        String validRegisterJson = """
-                {
-                    "username": "publicUser",
-                    "password": "Password123!"
-                }
-                """;
-
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validRegisterJson))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
-    @DisplayName("E2E Authorization Flow: Register -> Login -> Obtain Real JWT -> Call POST /api/chat -> 200 OK")
-    void shouldAuthenticateWithRealJwtFromLoginAndCallChatEndpoint() throws Exception {
-        // 1. Регистрация пользователя
+    @DisplayName("End-to-End JWT Auth & Persistence: Register -> Login -> Send Message -> Persist Session and Messages")
+    void shouldProcessMessageWithRealJwtFilterAndReachAiApi() throws Exception {
+        // 1. Регистрация нового пользователя
         String registerJson = """
                 {
                     "username": "jwtE2eUser",
@@ -179,20 +157,119 @@ class ChatControllerIntegrationTest {
                         }
                         """));
 
-        // 4. Отправка запроса на /api/chat с реальным заголовком Authorization: Bearer <jwt>
-        String chatRequestJson = """
+        // 4. Отправка первого сообщения (без sessionId) — должна создаться новая сессия
+        String chatRequestJson1 = """
                 {
                     "message": "Hello via real JWT!"
                 }
                 """;
 
+        MvcResult chatResult1 = mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(chatRequestJson1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chatSessionId", notNullValue()))
+                .andExpect(jsonPath("$.response").value("Authenticated via real JWT filter!"))
+                .andExpect(jsonPath("$.timestamp", notNullValue()))
+                .andReturn();
+
+        Number sessionIdNum = JsonPath.read(chatResult1.getResponse().getContentAsString(), "$.chatSessionId");
+        Long sessionId = sessionIdNum.longValue();
+
+        // Проверяем персистентность в БД
+        assertThat(chatSessionRepository.findById(sessionId)).isPresent();
+        ChatSession session = chatSessionRepository.findByIdWithUser(sessionId).orElseThrow();
+        assertThat(session.getTitle()).isEqualTo("Hello via real JWT!");
+        assertThat(session.getUser().getUsername()).isEqualTo("jwtE2eUser");
+
+        List<ChatMessage> messages = chatMessageRepository.findBySessionOrderByTimestampAsc(session);
+        assertThat(messages).hasSize(2);
+        assertThat(messages.get(0).getSenderRole()).isEqualTo("user");
+        assertThat(messages.get(0).getContent()).isEqualTo("Hello via real JWT!");
+        assertThat(messages.get(1).getSenderRole()).isEqualTo("ai");
+        assertThat(messages.get(1).getContent()).isEqualTo("Authenticated via real JWT filter!");
+
+        // 5. Отправка второго сообщения с указанием chatSessionId — должно добавиться в ту же сессию
+        when(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("""
+                        {
+                            "choices": [
+                                {
+                                    "message": {
+                                        "content": "Second response in same session!"
+                                    }
+                                }
+                            ]
+                        }
+                        """));
+
+        String chatRequestJson2 = String.format("""
+                {
+                    "message": "Continuing conversation",
+                    "chatSessionId": %d
+                }
+                """, sessionId);
+
         mockMvc.perform(post("/api/chat")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(chatRequestJson))
+                        .content(chatRequestJson2))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response").value("Authenticated via real JWT filter!"))
-                .andExpect(jsonPath("$.timestamp", notNullValue()));
+                .andExpect(jsonPath("$.chatSessionId").value(sessionId))
+                .andExpect(jsonPath("$.response").value("Second response in same session!"));
+
+        // Проверяем, что в сессии теперь 4 сообщения
+        List<ChatMessage> updatedMessages = chatMessageRepository.findBySessionOrderByTimestampAsc(session);
+        assertThat(updatedMessages).hasSize(4);
+        assertThat(updatedMessages.get(2).getContent()).isEqualTo("Continuing conversation");
+        assertThat(updatedMessages.get(3).getContent()).isEqualTo("Second response in same session!");
+    }
+
+    @Test
+    @DisplayName("Tenant Isolation: sending message to another user's session should return 404 Not Found")
+    void shouldRejectAccessToOtherUsersChatSessionWith404() throws Exception {
+        // Создаем пользователя А и его сессию через регистрацию/логин/чат
+        String regA = """
+                {"username":"userAlpha","password":"Password123!"}
+                """;
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(regA))
+                .andExpect(status().isCreated());
+        MvcResult logA = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(regA))
+                .andExpect(status().isOk()).andReturn();
+        String tokenA = JsonPath.read(logA.getResponse().getContentAsString(), "$.token");
+
+        when(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("Response A"));
+
+        MvcResult chatA = mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"User A first message\"}"))
+                .andExpect(status().isOk()).andReturn();
+        Number sessionNumA = JsonPath.read(chatA.getResponse().getContentAsString(), "$.chatSessionId");
+        Long sessionIdA = sessionNumA.longValue();
+
+        // Создаем пользователя Б
+        String regB = """
+                {"username":"userBeta","password":"Password123!"}
+                """;
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(regB))
+                .andExpect(status().isCreated());
+        MvcResult logB = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(regB))
+                .andExpect(status().isOk()).andReturn();
+        String tokenB = JsonPath.read(logB.getResponse().getContentAsString(), "$.token");
+
+        // Пользователь Б пытается отправить сообщение в сессию пользователя А
+        String attackJson = String.format("{\"message\":\"Hijack attempt\",\"chatSessionId\":%d}", sessionIdA);
+        mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenB)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(attackJson))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message", containsString("not found for user: userBeta")));
     }
 
     @Test

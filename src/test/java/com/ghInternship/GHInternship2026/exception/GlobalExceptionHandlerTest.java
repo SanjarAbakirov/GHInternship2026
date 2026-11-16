@@ -132,6 +132,21 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("handleChatSessionNotFound should return 404 Not Found with ErrorResponseDto")
+    void handleChatSessionNotFound_ShouldReturn404() {
+        ChatSessionNotFoundException ex = new ChatSessionNotFoundException(101L, "alice");
+
+        ResponseEntity<ErrorResponseDto> response = exceptionHandler.handleChatSessionNotFound(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().status()).isEqualTo(404);
+        assertThat(response.getBody().error()).isEqualTo("Not Found");
+        assertThat(response.getBody().message()).contains("Chat session with id 101 was not found for user: alice");
+        assertThat(response.getBody().path()).isEqualTo("/api/test");
+    }
+
+    @Test
     @DisplayName("handleAllUncaughtExceptions should return 500 Internal Server Error without leaking internal details")
     void handleAllUncaughtExceptions_ShouldReturn500() {
         RuntimeException ex = new RuntimeException("Unexpected database timeout");

@@ -143,15 +143,24 @@ export async function loginUser({ username, password }) {
 /**
  * Отправка сообщения в защищенный эндпоинт AI-чата.
  * Автоматически использует apiClient с добавлением токена в заголовок Authorization.
+ * При наличии chatSessionId передает его в теле запроса для персистентного сохранения
+ * и продолжения контекста диалога в базе данных.
  *
  * @param {string} message - Текст сообщения пользователя
  * @param {string} [token] - Опциональный токен авторизации (если опущен, автоматически берется из localStorage)
- * @returns {Promise<{response: string, timestamp: string}>}
+ * @param {number|string|null} [chatSessionId=null] - Опциональный ID существующей сессии диалога
+ * @returns {Promise<{chatSessionId?: number, response: string, timestamp: string}>}
  */
-export async function sendChatMessage(message, token) {
-  console.log(`[API] Отправка сообщения в AI-чат (длина: ${message?.length || 0} символов)`);
-  const options = token !== undefined ? { token } : {};
-  return apiClient.post('/api/chat', { message }, options);
+export async function sendChatMessage(message, token, chatSessionId = null) {
+  console.log(
+    `[API] Отправка сообщения в AI-чат (длина: ${message?.length || 0} символов, sessionId: ${chatSessionId || 'новый'})`
+  );
+  const options = token !== undefined && token !== null ? { token } : {};
+  const payload = { message };
+  if (chatSessionId !== null && chatSessionId !== undefined) {
+    payload.chatSessionId = Number(chatSessionId);
+  }
+  return apiClient.post('/api/chat', payload, options);
 }
 
 /**

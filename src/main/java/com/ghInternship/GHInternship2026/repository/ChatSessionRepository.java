@@ -133,6 +133,15 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, Long> 
     long countByUserId(Long userId);
 
     /**
+     * Найти сессию по идентификатору с немедленной (EAGER) загрузкой связанного пользователя (JOIN FETCH).
+     *
+     * @param id идентификатор сессии
+     * @return сессия с инициализированным пользователем
+     */
+    @Query("SELECT s FROM ChatSession s JOIN FETCH s.user WHERE s.id = :id")
+    Optional<ChatSession> findByIdWithUser(@Param("id") Long id);
+
+    /**
      * Безопасно удалить сессию по ID только если она принадлежит указанному пользователю.
      *
      * @param id ID сессии

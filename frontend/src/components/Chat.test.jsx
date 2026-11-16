@@ -293,4 +293,54 @@ describe('Chat Component — Unit & Integration Tests', () => {
     expect(screen.queryByTestId('mock-login-page')).not.toBeInTheDocument();
     expect(screen.getByLabelText(/текстовое поле ввода сообщения для ai/i)).toBeInTheDocument();
   });
+
+  test('Persistent Chat Sessions: сохраняет chatSessionId и передает его в последующих сообщениях', async () => {
+    const user = userEvent.setup();
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockFetchResponse({
+          chatSessionId: 555,
+          response: 'Ответ на первое сообщение',
+          timestamp: '2026-11-10T22:30:00Z',
+        })
+      )
+      .mockResolvedValueOnce(
+        createMockFetchResponse({
+          chatSessionId: 555,
+          response: 'Ответ на второе сообщение в той же сессии',
+          timestamp: '2026-11-10T22:30:05Z',
+        })
+      );
+    vi.stubGlobal('fetch', mockFetch);
+
+    renderWithAuthenticatedProvider(<Chat />);
+
+    const inputField = screen.getByLabelText(/текстовое поле ввода сообщения для ai/i);
+    const sendButton = screen.getByRole('button', { name: /отправить сообщение/i });
+
+    // Отправляем первое сообщение (без sessionId)
+    await user.type(inputField, 'Первый вопрос');
+    await user.click(sendButton);
+
+    await screen.findByText('Ответ на первое сообщение');
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [, options1] = mockFetch.mock.calls[0];
+    expect(JSON.parse(options1.body)).toEqual({ message: 'Первый вопрос' });
+
+    // Отправляем второе сообщение (должен прикрепиться chatSessionId: 555)
+    await user.type(inputField, 'Второй вопрос');
+    await user.click(sendButton);
+
+    await screen.findByText('Ответ на второе сообщение в той же сессии');
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const [, options2] = mockFetch.mock.calls[1];
+    expect(JSON.parse(options2.body)).toEqual({
+      message: 'Второй вопрос',
+      chatSessionId: 555,
+    });
+  });
 });

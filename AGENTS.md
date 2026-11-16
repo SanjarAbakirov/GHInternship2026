@@ -240,12 +240,34 @@
         - [`ChatMessageRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/ChatMessageRepositoryTest.java): верификация CRUD, выборки в прямом и обратном хронологическом порядке, извлечения последнего сообщения, подсчета и каскадного удаления сообщений сессии.
       - Все **182 теста** бэкенда (`./mvnw clean verify`) и **12 тестов** фронтенда (`npm test`) завершились со 100% успехом.
 
+    - [x] **5. Add Persistent Chat Sessions in ChatService (Backend):**
+      - Расширены DTO: [`ChatRequestDto`](src/main/java/com/ghInternship/GHInternship2026/dto/ChatRequestDto.java) и [`ChatResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/ChatResponseDto.java) дополнены опциональным идентификатором сессии `Long chatSessionId` с сохранением обратной совместимости (одноаргументные конструкторы, геттеры-алиасы `sessionId()`).
+      - Разработано доменное исключение [`ChatSessionNotFoundException`](src/main/java/com/ghInternship/GHInternship2026/exception/ChatSessionNotFoundException.java) и добавлен `@ExceptionHandler` в [`GlobalExceptionHandler`](src/main/java/com/ghInternship/GHInternship2026/exception/GlobalExceptionHandler.java) с возвратом HTTP 404 Not Found.
+      - Расширен интерфейс [`ChatService`](src/main/java/com/ghInternship/GHInternship2026/service/ChatService.java) методом `processMessage(ChatRequestDto requestDto, String username)` и default-методом для легаси-вызовов.
+      - Реализована персистентность диалогов в [`ChatServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/ChatServiceImpl.java) под `@Transactional`:
+        - Автоматическое определение пользователя через переданный `username` или `SecurityContextHolder`.
+        - Проверка `chatSessionId`: при отсутствии создается новая сущность [`ChatSession`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatSession.java) с автогенерацией темы из первого сообщения пользователя.
+        - При указании `chatSessionId` выполняется поиск сессии через `findByIdAndUser` с обязательной валидацией владельца: попытка отправить сообщение в чужую сессию немедленно пресекается исключением [`ChatSessionNotFoundException`](src/main/java/com/ghInternship/GHInternship2026/exception/ChatSessionNotFoundException.java) (HTTP 404 Not Found, защита от IDOR).
+        - Персистентное сохранение сообщения пользователя как [`ChatMessage`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatMessage.java) (`ROLE_USER`), привязанного к сессии.
+        - Вызов внешнего AI API (OpenAI) через защищенный `RestTemplate`.
+        - Персистентное сохранение ответа AI как [`ChatMessage`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatMessage.java) (`ROLE_AI`), привязанного к той же сессии, обновление `updatedAt` сессии и возврат [`ChatResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/ChatResponseDto.java) с актуальным `chatSessionId`.
+      - Обновлен [`ChatController`](src/main/java/com/ghInternship/GHInternship2026/controller/ChatController.java): извлечение аутентифицированного пользователя через `Authentication authentication` и передача в `ChatService`.
+      - В [`ChatSessionRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/ChatSessionRepository.java) добавлен метод `findByIdWithUser` с `JOIN FETCH s.user` для исключения lazy initialization issues.
+      - Интеграция с React-фронтендом:
+        - В [`api.js`](frontend/src/services/api.js) функция `sendChatMessage` теперь принимает `chatSessionId` и включает его в JSON-тело запроса.
+        - В [`Chat.jsx`](frontend/src/components/Chat.jsx) добавлено реактивное состояние `currentSessionId`, автоприкрепление `chatSessionId` к последующим репликам, отображение номера активной сессии в подзаголовке чата и сброс сессии при очистке диалога (`handleClearChat`).
+      - Тестирование:
+        - Модульные тесты [`ChatServiceImplTest`](src/test/java/com/ghInternship/GHInternship2026/service/ChatServiceImplTest.java): создание новой сессии и сохранение обоих сообщений, прикрепление к существующей сессии, валидация изоляции пользователей и выброс 404 при несанкционированном доступе.
+        - Сквозные интеграционные тесты [`ChatControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerIntegrationTest.java): полный E2E-сценарий (Register -> Login -> JWT -> Send First Message -> Session Created in DB -> Send Second Message with chatSessionId -> 4 messages in DB -> IDOR access rejected with 404).
+        - Модульные тесты DTO и контроллеров: [`ChatRequestDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/ChatRequestDtoTest.java), [`ChatResponseDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/ChatResponseDtoTest.java), [`ChatControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerTest.java), [`GlobalExceptionHandlerTest`](src/test/java/com/ghInternship/GHInternship2026/exception/GlobalExceptionHandlerTest.java).
+        - Фронтенд-тесты: расширены [`api.test.js`](frontend/src/services/api.test.js) и [`Chat.test.jsx`](frontend/src/components/Chat.test.jsx) с проверкой передачи `chatSessionId` между последовательными репликами (все **14 тестов** Vitest пройдены).
+      - Полная верификация: **186/186** тестов бэкенда (`./mvnw clean verify`) и **14/14** тестов фронтенда (`npm test`) пройдены со 100% успехом, линтер `oxlint` — 0 предупреждений и 0 ошибок.
+
 ## Следующие шаги
-- **5. Chat Service Persistence Integration & History API (Backend):**
-  - Обновление `ChatServiceImpl`: автоматическое создание/получение сессии `ChatSession` и сохранение сообщений пользователя и AI в PostgreSQL.
-  - Добавление эндпоинта `GET /api/chat/history` (или `GET /api/chat/sessions`) в `ChatController` для получения истории диалогов авторизованного пользователя.
-- **6. Frontend Chat History Loading & Continuity:**
-  - Добавление функции `getChatHistory()` в `api.js` и автозагрузка сохраненной истории сообщений при монтировании React-компонента `Chat.jsx`.
+- **6. Chat History Retrieval API (Backend):**
+  - Добавление эндпоинтов `GET /api/chat/sessions` (получение списка всех диалогов пользователя с превью и количеством сообщений) и `GET /api/chat/sessions/{id}/messages` (загрузка сообщений конкретной сессии).
+- **7. Chat History Sidebar & Session Switcher (Frontend):**
+  - Добавление боковой панели истории бесед в React-компонент чата с возможностью переключения между беседами и создания нового чата.
 
 
 

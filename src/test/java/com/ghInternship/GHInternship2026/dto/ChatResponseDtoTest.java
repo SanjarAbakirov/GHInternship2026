@@ -25,6 +25,22 @@ class ChatResponseDtoTest {
         ChatResponseDto dto = new ChatResponseDto("Custom reply", customTime);
         assertThat(dto.response()).isEqualTo("Custom reply");
         assertThat(dto.timestamp()).isEqualTo(customTime);
+        assertThat(dto.chatSessionId()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should support chatSessionId in constructor and alias sessionId()")
+    void shouldSupportChatSessionId() {
+        LocalDateTime time = LocalDateTime.now();
+        ChatResponseDto dto = new ChatResponseDto(99L, "Response with session", time);
+        assertThat(dto.chatSessionId()).isEqualTo(99L);
+        assertThat(dto.sessionId()).isEqualTo(99L);
+        assertThat(dto.response()).isEqualTo("Response with session");
+        assertThat(dto.timestamp()).isEqualTo(time);
+
+        ChatResponseDto dtoWithoutTime = new ChatResponseDto(100L, "Auto timestamp");
+        assertThat(dtoWithoutTime.chatSessionId()).isEqualTo(100L);
+        assertThat(dtoWithoutTime.timestamp()).isNotNull();
     }
 }
 

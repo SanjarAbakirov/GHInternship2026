@@ -124,6 +124,7 @@ export default function Chat({
   });
 
   const [inputMessage, setInputMessage] = useState('');
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -186,15 +187,22 @@ export default function Chat({
     console.log(
       `[Chat] Вызов POST /api/chat [Пользователь: "${currentUser?.username || 'Guest'}", Token: ${
         token ? 'Присутствует' : 'Отсутствует'
-      }]`
+      }, SessionId: ${currentSessionId || 'новый'}]`
     );
 
     if (onSendMessage && typeof onSendMessage === 'function') {
-      const customRes = await onSendMessage(messageText);
+      const customRes = await onSendMessage(messageText, currentSessionId);
+      if (typeof customRes === 'object' && customRes?.chatSessionId) {
+        setCurrentSessionId(customRes.chatSessionId);
+      }
       return typeof customRes === 'string' ? customRes : customRes?.response || customRes?.text || '';
     }
 
-    const responseDto = await sendChatMessage(messageText, token);
+    const responseDto = await sendChatMessage(messageText, token, currentSessionId);
+    if (responseDto?.chatSessionId) {
+      console.log(`[Chat] Сохранена активная сессия диалога [id=${responseDto.chatSessionId}]`);
+      setCurrentSessionId(responseDto.chatSessionId);
+    }
     return responseDto.response || 'Ответ от AI успешно получен.';
   };
 
@@ -275,10 +283,11 @@ export default function Chat({
   };
 
   /**
-   * Очистка истории сообщений
+   * Очистка истории сообщений и сброс текущей сессии диалога
    */
   const handleClearChat = () => {
     shouldAutoScrollRef.current = true;
+    setCurrentSessionId(null);
     setMessages([
       {
         id: generateMessageId('welcome'),
@@ -292,7 +301,7 @@ export default function Chat({
 
   const effectiveSubtitle = subtitle || (
     currentUser
-      ? `Авторизован как: ${currentUser.username} • Защищенный сеанс`
+      ? `Авторизован как: ${currentUser.username}${currentSessionId ? ` • Сессия #${currentSessionId}` : ''} • Защищенный сеанс`
       : 'Безопасное соединение через Spring Boot API'
   );
 

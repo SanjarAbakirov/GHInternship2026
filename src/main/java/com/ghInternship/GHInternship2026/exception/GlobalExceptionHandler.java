@@ -135,6 +135,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Обработка отсутствия запрашиваемой сессии чата или отсутствия прав доступа к ней (404 Not Found).
+     */
+    @ExceptionHandler(ChatSessionNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleChatSessionNotFound(
+            ChatSessionNotFoundException ex, HttpServletRequest request) {
+        log.warn("Chat session not found error: {}", ex.getMessage());
+        ErrorResponseDto errorResponse = new ErrorResponseDto(
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
      * Обработка некорректных аргументов и общих клиентских ошибок.
      */
     @ExceptionHandler(IllegalArgumentException.class)

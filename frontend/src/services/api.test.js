@@ -74,5 +74,25 @@ describe('API Client & Authenticated Fetch Unit Tests', () => {
       message: 'Full authentication is required',
     });
   });
+
+  test('sendChatMessage передает chatSessionId в теле запроса, если указан', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ chatSessionId: 101, response: 'Session continued' }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const res = await sendChatMessage('Continuing conversation', 'jwt-token-xyz', 101);
+    expect(res).toEqual({ chatSessionId: 101, response: 'Session continued' });
+
+    const [, options] = mockFetch.mock.calls[0];
+    expect(options.headers['Authorization']).toBe('Bearer jwt-token-xyz');
+    expect(JSON.parse(options.body)).toEqual({
+      message: 'Continuing conversation',
+      chatSessionId: 101,
+    });
+  });
 });
 
