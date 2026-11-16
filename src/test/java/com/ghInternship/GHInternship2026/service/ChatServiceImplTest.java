@@ -1,11 +1,14 @@
 package com.ghInternship.GHInternship2026.service;
 
+import com.ghInternship.GHInternship2026.dto.ChatMessageResponseDto;
 import com.ghInternship.GHInternship2026.dto.ChatRequestDto;
 import com.ghInternship.GHInternship2026.dto.ChatResponseDto;
+import com.ghInternship.GHInternship2026.dto.ChatSessionResponseDto;
 import com.ghInternship.GHInternship2026.entity.ChatMessage;
 import com.ghInternship.GHInternship2026.entity.ChatSession;
 import com.ghInternship.GHInternship2026.entity.User;
 import com.ghInternship.GHInternship2026.exception.ChatSessionNotFoundException;
+import com.ghInternship.GHInternship2026.exception.UserNotFoundException;
 import com.ghInternship.GHInternship2026.repository.ChatMessageRepository;
 import com.ghInternship.GHInternship2026.repository.ChatSessionRepository;
 import com.ghInternship.GHInternship2026.repository.UserRepository;
@@ -271,5 +274,92 @@ class ChatServiceImplTest {
                 .hasMessageContaining("must not be blank");
 
         verifyNoInteractions(restTemplate);
+    }
+
+    @Test
+    @DisplayName("History: should return user chat sessions with message count and preview")
+    void shouldReturnUserChatSessionsWithCountAndPreview() {
+        User user = new User("alice", "hash_alice");
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+
+        ChatSession session1 = new ChatSession(1L, user, "Первая беседа", LocalDateTime.now().minusHours(2));
+        ChatSession session2 = new ChatSession(2L, user, "Вторая беседа", LocalDateTime.now());
+
+        when(chatSessionRepository.findByUserOrderByUpdatedAtDesc(user))
+                .thenReturn(List.of(session2, session1));
+
+        ChatMessage lastMsg2 = ChatMessage.aiMessage(session2, "Ответ на второй вопрос");
+        ChatMessage lastMsg1 = ChatMessage.userMessage(session1, "Вопрос в первой беседе");
+
+        when(chatMessageRepository.countBySession(session2)).thenReturn(4L);
+        when(chatMessageRepository.countBySession(session1)).thenReturn(2L);
+        when(chatMessageRepository.findFirstBySessionOrderByTimestampDesc(session2)).thenReturn(Optional.of(lastMsg2));
+        when(chatMessageRepository.findFirstBySessionOrderByTimestampDesc(session1)).thenReturn(Optional.of(lastMsg1));
+
+        List<ChatSessionResponseDto> sessions = chatService.getUserChatSessions("alice");
+
+        assertThat(sessions).hasSize(2);
+        assertThat(sessions.get(0).id()).isEqualTo(2L);
+        assertThat(sessions.get(0).title()).isEqualTo("Вторая беседа");
+        assertThat(sessions.get(0).messageCount()).isEqualTo(4L);
+        assertThat(sessions.get(0).lastMessagePreview()).isEqualTo("Ответ на второй вопрос");
+
+        assertThat(sessions.get(1).id()).isEqualTo(1L);
+        assertThat(sessions.get(1).messageCount()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("History: should throw UserNotFoundException when fetching sessions for unknown user")
+    void shouldThrowUserNotFoundExceptionWhenFetchingSessionsForUnknownUser() {
+        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> chatService.getUserChatSessions("unknown"))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("unknown");
+    }
+
+    @Test
+    @DisplayName("History: should return chronological messages for owned session")
+    void shouldReturnMessagesForOwnedSession() {
+        User user = new User("bob", "hash_bob");
+        when(userRepository.findByUsername("bob")).thenReturn(Optional.of(user));
+
+        ChatSession session = new ChatSession(10L, user, "Тестовый чат", LocalDateTime.now());
+        when(chatSessionRepository.findByIdAndUser(10L, user)).thenReturn(Optional.of(session));
+
+        ChatMessage m1 = ChatMessage.userMessage(session, "Привет!");
+        ChatMessage m2 = ChatMessage.aiMessage(session, "Привет! Чем помочь?");
+        when(chatMessageRepository.findBySessionOrderByTimestampAsc(session)).thenReturn(List.of(m1, m2));
+
+        List<ChatMessageResponseDto> messages = chatService.getSessionMessages(10L, "bob");
+
+        assertThat(messages).hasSize(2);
+        assertThat(messages.get(0).senderRole()).isEqualTo("user");
+        assertThat(messages.get(0).content()).isEqualTo("Привет!");
+        assertThat(messages.get(1).senderRole()).isEqualTo("ai");
+        assertThat(messages.get(1).content()).isEqualTo("Привет! Чем помочь?");
+    }
+
+    @Test
+    @DisplayName("History: should throw ChatSessionNotFoundException when session belongs to another user (IDOR protection)")
+    void shouldThrowChatSessionNotFoundExceptionWhenUserDoesNotOwnSession() {
+        User user = new User("charlie", "hash_charlie");
+        when(userRepository.findByUsername("charlie")).thenReturn(Optional.of(user));
+        when(chatSessionRepository.findByIdAndUser(99L, user)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> chatService.getSessionMessages(99L, "charlie"))
+                .isInstanceOf(ChatSessionNotFoundException.class)
+                .hasMessageContaining("99")
+                .hasMessageContaining("charlie");
+
+        verifyNoInteractions(chatMessageRepository);
+    }
+
+    @Test
+    @DisplayName("History: should throw IllegalArgumentException when sessionId is null")
+    void shouldThrowIllegalArgumentExceptionWhenSessionIdIsNull() {
+        assertThatThrownBy(() -> chatService.getSessionMessages(null, "alice"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("null");
     }
 }

@@ -1,5 +1,12 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getStoredAuthToken, authFetch, apiClient, sendChatMessage } from './api';
+import {
+  getStoredAuthToken,
+  authFetch,
+  apiClient,
+  sendChatMessage,
+  getUserChatSessions,
+  getSessionMessages,
+} from './api';
 
 describe('API Client & Authenticated Fetch Unit Tests', () => {
   beforeEach(() => {
@@ -93,6 +100,49 @@ describe('API Client & Authenticated Fetch Unit Tests', () => {
       message: 'Continuing conversation',
       chatSessionId: 101,
     });
+  });
+
+  test('getUserChatSessions запрашивает GET /api/chat/sessions с токеном авторизации', async () => {
+    const mockSessions = [
+      { id: 1, title: 'Диалог 1', createdAt: '2026-11-16T12:00:00Z', updatedAt: '2026-11-16T12:05:00Z', messageCount: 2 },
+    ];
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockSessions,
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await getUserChatSessions('custom-jwt-token');
+    expect(result).toEqual(mockSessions);
+
+    const [url, options] = mockFetch.mock.calls[0];
+    expect(url).toMatch(/\/api\/chat\/sessions$/);
+    expect(options.method).toBe('GET');
+    expect(options.headers['Authorization']).toBe('Bearer custom-jwt-token');
+  });
+
+  test('getSessionMessages запрашивает GET /api/chat/sessions/{sessionId} с токеном', async () => {
+    const mockMessages = [
+      { id: 10, sessionId: 42, senderRole: 'user', content: 'Привет', timestamp: '2026-11-16T12:00:00Z' },
+      { id: 11, sessionId: 42, senderRole: 'ai', content: 'Привет!', timestamp: '2026-11-16T12:00:05Z' },
+    ];
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => mockMessages,
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await getSessionMessages(42, 'custom-jwt-token');
+    expect(result).toEqual(mockMessages);
+
+    const [url, options] = mockFetch.mock.calls[0];
+    expect(url).toMatch(/\/api\/chat\/sessions\/42$/);
+    expect(options.method).toBe('GET');
+    expect(options.headers['Authorization']).toBe('Bearer custom-jwt-token');
   });
 });
 

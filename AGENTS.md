@@ -263,11 +263,31 @@
         - Фронтенд-тесты: расширены [`api.test.js`](frontend/src/services/api.test.js) и [`Chat.test.jsx`](frontend/src/components/Chat.test.jsx) с проверкой передачи `chatSessionId` между последовательными репликами (все **14 тестов** Vitest пройдены).
       - Полная верификация: **186/186** тестов бэкенда (`./mvnw clean verify`) и **14/14** тестов фронтенда (`npm test`) пройдены со 100% успехом, линтер `oxlint` — 0 предупреждений и 0 ошибок.
 
+    - [x] **6. Create Endpoints for Chat History (Backend):**
+      - Созданы новые DTO:
+        - [`ChatSessionResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/ChatSessionResponseDto.java): возвращает `id`, `title`, `createdAt`, `updatedAt`, `messageCount` (количество сообщений в сессии) и `lastMessagePreview` (фрагмент последнего ответа для превью в списке).
+        - [`ChatMessageResponseDto`](src/main/java/com/ghInternship/GHInternship2026/dto/ChatMessageResponseDto.java): возвращает `id`, `sessionId`, `senderRole`, `content`, `timestamp` и удобные геттеры-алиасы (`role()`, `sender()`, `message()`, `text()`).
+      - Расширен интерфейс [`ChatService`](src/main/java/com/ghInternship/GHInternship2026/service/ChatService.java) методами `getUserChatSessions(String username)` и `getSessionMessages(Long sessionId, String username)`.
+      - Реализована логика выборки истории и строгая изоляция пользователей в [`ChatServiceImpl`](src/main/java/com/ghInternship/GHInternship2026/service/ChatServiceImpl.java):
+        - `getUserChatSessions`: выборка сессий авторизованного пользователя через `chatSessionRepository.findByUserOrderByUpdatedAtDesc(user)`, подсчет сообщений сессии и извлечение сниппета последнего сообщения.
+        - `getSessionMessages`: валидация принадлежности сессии текущему пользователю через `chatSessionRepository.findByIdAndUser(sessionId, user)`. При несовпадении владельца или отсутствии сессии выбрасывается `ChatSessionNotFoundException` (HTTP 404 Not Found, предотвращение атак класса IDOR). Сообщения возвращаются в прямом хронологическом порядке (`findBySessionOrderByTimestampAsc`).
+      - В [`ChatController`](src/main/java/com/ghInternship/GHInternship2026/controller/ChatController.java) добавлены REST-эндпоинты:
+        - `GET /api/chat/sessions`: возвращает список всех диалогов аутентифицированного пользователя (`HTTP 200 OK`).
+        - `GET /api/chat/sessions/{sessionId}` (а также `/sessions/{sessionId}/messages`): возвращает список всех сообщений сессии пользователя (`HTTP 200 OK`).
+        - Оба эндпоинта автоматически защищены Spring Security (`authenticated()`) и возвращают `401 Unauthorized` без токена.
+      - В [`api.js`](frontend/src/services/api.js) добавлены клиентские функции `getUserChatSessions(token)` и `getSessionMessages(sessionId, token)` для бесшовной интеграции с фронтендом.
+      - Автотесты:
+        - Написаны модульные тесты DTO: [`ChatSessionResponseDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/ChatSessionResponseDtoTest.java) и [`ChatMessageResponseDtoTest`](src/test/java/com/ghInternship/GHInternship2026/dto/ChatMessageResponseDtoTest.java).
+        - Расширены модульные тесты сервиса [`ChatServiceImplTest`](src/test/java/com/ghInternship/GHInternship2026/service/ChatServiceImplTest.java) (проверка извлечения сессий, сообщений, выброса 404 при попытке доступа к чужой сессии и 404/UserNotFoundException при неизвестном пользователе).
+        - Расширены срезовые тесты контроллера [`ChatControllerTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerTest.java) (проверка 401 без аутентификации, 200 со списком сессий, 200 со списком сообщений и 404 при отсутствии сессии).
+        - Расширены сквозные интеграционные тесты [`ChatControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerIntegrationTest.java) (E2E-проверка регистрации, логина, создания сообщений, запроса списка сессий и сообщений через реальные JWT-токены и проверка строгой изоляции между пользователями с возвратом 404 при попытке межпользовательского доступа).
+        - Расширены тесты фронтенда в [`api.test.js`](frontend/src/services/api.test.js).
+      - Полная верификация: **207/207** тестов бэкенда (`./mvnw clean verify`) и **16/16** тестов фронтенда (`npm test`) пройдены со 100% успехом, линтер `oxlint` — 0 предупреждений и 0 ошибок.
+
 ## Следующие шаги
-- **6. Chat History Retrieval API (Backend):**
-  - Добавление эндпоинтов `GET /api/chat/sessions` (получение списка всех диалогов пользователя с превью и количеством сообщений) и `GET /api/chat/sessions/{id}/messages` (загрузка сообщений конкретной сессии).
 - **7. Chat History Sidebar & Session Switcher (Frontend):**
-  - Добавление боковой панели истории бесед в React-компонент чата с возможностью переключения между беседами и создания нового чата.
+  - Добавление боковой панели истории бесед в React-компонент чата [`Chat.jsx`](frontend/src/components/Chat.jsx) с отображением списка сохраненных сессий (`getUserChatSessions`).
+  - Возможность клика по сессии для загрузки всех предыдущих сообщений диалога (`getSessionMessages`) и кнопка «Новый диалог» для сброса сессии.
 
 
 

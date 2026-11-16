@@ -25,12 +25,14 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -310,5 +312,107 @@ class ChatControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(401));
 
         verifyNoInteractions(restTemplate);
+    }
+
+    // =========================================================================
+    // History Endpoints Integration Tests (GET /api/chat/sessions, /sessions/{id})
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/chat/sessions without authentication should return 401 Unauthorized")
+    void shouldRejectGetSessionsWithoutAuthInIntegration() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"));
+    }
+
+    @Test
+    @DisplayName("GET /api/chat/sessions/{id} without authentication should return 401 Unauthorized")
+    void shouldRejectGetSessionMessagesWithoutAuthInIntegration() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions/100"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    @DisplayName("E2E History & IDOR Protection: fetch user sessions and messages, ensure isolation between users")
+    void shouldFetchUserSessionsAndMessagesWithStrictIdorProtection() throws Exception {
+        // 1. Создаем пользователя А и отправляем сообщение в чат
+        String regUserA = """
+                {"username":"historyUserA","password":"PasswordA123!"}
+                """;
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(regUserA))
+                .andExpect(status().isCreated());
+        MvcResult logA = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(regUserA))
+                .andExpect(status().isOk()).andReturn();
+        String tokenA = JsonPath.read(logA.getResponse().getContentAsString(), "$.token");
+
+        when(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("""
+                        {
+                            "choices": [
+                                {
+                                    "message": {
+                                        "content": "Ответ AI для пользователя А"
+                                    }
+                                }
+                            ]
+                        }
+                        """));
+
+        MvcResult chatA = mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Вопрос пользователя А про PostgreSQL\"}"))
+                .andExpect(status().isOk()).andReturn();
+        Number sessionNumA = JsonPath.read(chatA.getResponse().getContentAsString(), "$.chatSessionId");
+        Long sessionIdA = sessionNumA.longValue();
+
+        // 2. Пользователь А запрашивает список своих сессий через GET /api/chat/sessions
+        mockMvc.perform(get("/api/chat/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(sessionIdA))
+                .andExpect(jsonPath("$[0].title").value("Вопрос пользователя А про PostgreSQL"))
+                .andExpect(jsonPath("$[0].messageCount").value(2))
+                .andExpect(jsonPath("$[0].lastMessagePreview").value("Ответ AI для пользователя А"));
+
+        // 3. Пользователь А запрашивает сообщения своей сессии через GET /api/chat/sessions/{sessionId}
+        mockMvc.perform(get("/api/chat/sessions/" + sessionIdA)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].sessionId").value(sessionIdA))
+                .andExpect(jsonPath("$[0].senderRole").value("user"))
+                .andExpect(jsonPath("$[0].content").value("Вопрос пользователя А про PostgreSQL"))
+                .andExpect(jsonPath("$[1].sessionId").value(sessionIdA))
+                .andExpect(jsonPath("$[1].senderRole").value("ai"))
+                .andExpect(jsonPath("$[1].content").value("Ответ AI для пользователя А"));
+
+        // 4. Создаем пользователя Б
+        String regUserB = """
+                {"username":"historyUserB","password":"PasswordB123!"}
+                """;
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(regUserB))
+                .andExpect(status().isCreated());
+        MvcResult logB = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(regUserB))
+                .andExpect(status().isOk()).andReturn();
+        String tokenB = JsonPath.read(logB.getResponse().getContentAsString(), "$.token");
+
+        // 5. Пользователь Б запрашивает список своих сессий — должен получить пустой список []
+        mockMvc.perform(get("/api/chat/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        // 6. Пользователь Б пытается прочитать сообщения сессии пользователя А — должен получить 404 Not Found (IDOR защита)
+        mockMvc.perform(get("/api/chat/sessions/" + sessionIdA)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenB))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message", containsString("historyUserB")));
     }
 }

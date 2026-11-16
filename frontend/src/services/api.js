@@ -164,6 +164,29 @@ export async function sendChatMessage(message, token, chatSessionId = null) {
 }
 
 /**
+ * Получение списка всех сессий диалогов для аутентифицированного пользователя
+ * @param {string} [token] - Опциональный токен авторизации
+ * @returns {Promise<Array<{id: number, title: string, createdAt: string, updatedAt: string, messageCount: number, lastMessagePreview?: string}>>}
+ */
+export async function getUserChatSessions(token) {
+  console.log('[API] Запрос списка сессий диалогов пользователя');
+  const options = token !== undefined && token !== null ? { token } : {};
+  return apiClient.get('/api/chat/sessions', options);
+}
+
+/**
+ * Получение всех сообщений для конкретной сессии диалога с проверкой прав доступа
+ * @param {number|string} sessionId - ID сессии
+ * @param {string} [token] - Опциональный токен авторизации
+ * @returns {Promise<Array<{id: number, sessionId: number, senderRole: string, content: string, timestamp: string}>>}
+ */
+export async function getSessionMessages(sessionId, token) {
+  console.log(`[API] Запрос сообщений для сессии [id=${sessionId}]`);
+  const options = token !== undefined && token !== null ? { token } : {};
+  return apiClient.get(`/api/chat/sessions/${sessionId}`, options);
+}
+
+/**
  * Проверка доступности Spring Boot бэкенда
  */
 export async function checkBackendHealth() {

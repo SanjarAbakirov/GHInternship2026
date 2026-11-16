@@ -2,8 +2,11 @@ package com.ghInternship.GHInternship2026.controller;
 
 import com.ghInternship.GHInternship2026.config.SecurityConfig;
 import com.ghInternship.GHInternship2026.config.WebConfig;
+import com.ghInternship.GHInternship2026.dto.ChatMessageResponseDto;
 import com.ghInternship.GHInternship2026.dto.ChatRequestDto;
 import com.ghInternship.GHInternship2026.dto.ChatResponseDto;
+import com.ghInternship.GHInternship2026.dto.ChatSessionResponseDto;
+import com.ghInternship.GHInternship2026.exception.ChatSessionNotFoundException;
 import com.ghInternship.GHInternship2026.service.ChatService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,14 +19,17 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -193,5 +199,97 @@ class ChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    // =========================================================================
+    // 5. Тесты эндпоинтов истории диалогов (History Endpoints: /sessions, /sessions/{sessionId})
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/chat/sessions without authentication should return 401 Unauthorized")
+    void shouldRejectGetSessionsWithoutAuth() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"));
+
+        verifyNoInteractions(chatService);
+    }
+
+    @Test
+    @WithMockUser(username = "alice")
+    @DisplayName("GET /api/chat/sessions with authorized user should return 200 OK and list of sessions")
+    void shouldReturnUserSessionsWhenAuthorized() throws Exception {
+        LocalDateTime now = LocalDateTime.now();
+        List<ChatSessionResponseDto> mockSessions = List.of(
+                new ChatSessionResponseDto(1L, "Диалог 1", now, now, 2L, "Превью 1"),
+                new ChatSessionResponseDto(2L, "Диалог 2", now, now, 5L, "Превью 2")
+        );
+        when(chatService.getUserChatSessions("alice")).thenReturn(mockSessions);
+
+        mockMvc.perform(get("/api/chat/sessions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].title").value("Диалог 1"))
+                .andExpect(jsonPath("$[0].messageCount").value(2))
+                .andExpect(jsonPath("$[0].lastMessagePreview").value("Превью 1"))
+                .andExpect(jsonPath("$[1].id").value(2))
+                .andExpect(jsonPath("$[1].title").value("Диалог 2"));
+
+        verify(chatService).getUserChatSessions("alice");
+    }
+
+    @Test
+    @DisplayName("GET /api/chat/sessions/{sessionId} without authentication should return 401 Unauthorized")
+    void shouldRejectGetSessionMessagesWithoutAuth() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions/42"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"));
+
+        verifyNoInteractions(chatService);
+    }
+
+    @Test
+    @WithMockUser(username = "bob")
+    @DisplayName("GET /api/chat/sessions/{sessionId} with authorized user should return 200 OK and messages")
+    void shouldReturnSessionMessagesWhenAuthorized() throws Exception {
+        LocalDateTime now = LocalDateTime.now();
+        List<ChatMessageResponseDto> mockMessages = List.of(
+                new ChatMessageResponseDto(10L, 42L, "user", "Вопрос", now),
+                new ChatMessageResponseDto(11L, 42L, "ai", "Ответ", now.plusSeconds(5))
+        );
+        when(chatService.getSessionMessages(42L, "bob")).thenReturn(mockMessages);
+
+        mockMvc.perform(get("/api/chat/sessions/42"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id").value(10))
+                .andExpect(jsonPath("$[0].sessionId").value(42))
+                .andExpect(jsonPath("$[0].senderRole").value("user"))
+                .andExpect(jsonPath("$[0].content").value("Вопрос"))
+                .andExpect(jsonPath("$[1].id").value(11))
+                .andExpect(jsonPath("$[1].senderRole").value("ai"))
+                .andExpect(jsonPath("$[1].content").value("Ответ"));
+
+        verify(chatService).getSessionMessages(42L, "bob");
+    }
+
+    @Test
+    @WithMockUser(username = "charlie")
+    @DisplayName("GET /api/chat/sessions/{sessionId} for non-existent or foreign session should return 404 Not Found")
+    void shouldReturn404WhenSessionNotFoundOrForeign() throws Exception {
+        when(chatService.getSessionMessages(999L, "charlie"))
+                .thenThrow(new ChatSessionNotFoundException(999L, "charlie"));
+
+        mockMvc.perform(get("/api/chat/sessions/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message", containsString("999")))
+                .andExpect(jsonPath("$.message", containsString("charlie")));
+
+        verify(chatService).getSessionMessages(999L, "charlie");
     }
 }

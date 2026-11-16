@@ -1,11 +1,14 @@
 package com.ghInternship.GHInternship2026.service;
 
+import com.ghInternship.GHInternship2026.dto.ChatMessageResponseDto;
 import com.ghInternship.GHInternship2026.dto.ChatRequestDto;
 import com.ghInternship.GHInternship2026.dto.ChatResponseDto;
+import com.ghInternship.GHInternship2026.dto.ChatSessionResponseDto;
 import com.ghInternship.GHInternship2026.entity.ChatMessage;
 import com.ghInternship.GHInternship2026.entity.ChatSession;
 import com.ghInternship.GHInternship2026.entity.User;
 import com.ghInternship.GHInternship2026.exception.ChatSessionNotFoundException;
+import com.ghInternship.GHInternship2026.exception.UserNotFoundException;
 import com.ghInternship.GHInternship2026.repository.ChatMessageRepository;
 import com.ghInternship.GHInternship2026.repository.ChatSessionRepository;
 import com.ghInternship.GHInternship2026.repository.UserRepository;
@@ -26,6 +29,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -126,6 +130,75 @@ public class ChatServiceImpl implements ChatService {
 
         Long responseSessionId = (session != null) ? session.getId() : requestDto.chatSessionId();
         return new ChatResponseDto(responseSessionId, aiResponseText, LocalDateTime.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChatSessionResponseDto> getUserChatSessions(String username) {
+        log.info("Запрос списка всех сессий диалогов для пользователя: {}", username);
+        User user = resolveUser(username);
+        if (user == null) {
+            log.warn("Пользователь '{}' не найден при получении списка сессий диалогов", username);
+            throw new UserNotFoundException("Пользователь " + username + " не найден");
+        }
+
+        if (chatSessionRepository == null) {
+            return Collections.emptyList();
+        }
+
+        List<ChatSession> sessions = chatSessionRepository.findByUserOrderByUpdatedAtDesc(user);
+        log.info("Найдено {} сессий диалогов для пользователя '{}'", sessions.size(), username);
+
+        return sessions.stream().map(session -> {
+            long messageCount = 0;
+            String lastPreview = null;
+            if (chatMessageRepository != null) {
+                messageCount = chatMessageRepository.countBySession(session);
+                ChatMessage lastMsg = chatMessageRepository.findFirstBySessionOrderByTimestampDesc(session).orElse(null);
+                if (lastMsg != null && lastMsg.getContent() != null) {
+                    String content = lastMsg.getContent();
+                    lastPreview = content.length() > 100 ? content.substring(0, 100) + "..." : content;
+                }
+            }
+            return ChatSessionResponseDto.fromEntity(session, messageCount, lastPreview);
+        }).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChatMessageResponseDto> getSessionMessages(Long sessionId, String username) {
+        if (sessionId == null) {
+            log.warn("Попытка получения сообщений с sessionId == null");
+            throw new IllegalArgumentException("Идентификатор сессии не может быть null");
+        }
+
+        log.info("Запрос всех сообщений сессии [id={}] для пользователя: {}", sessionId, username);
+        User user = resolveUser(username);
+        if (user == null) {
+            log.warn("Пользователь '{}' не найден при получении сообщений сессии [id={}]", username, sessionId);
+            throw new UserNotFoundException("Пользователь " + username + " не найден");
+        }
+
+        if (chatSessionRepository == null || chatMessageRepository == null) {
+            return Collections.emptyList();
+        }
+
+        // 1. Проверка прав доступа: сессия должна принадлежать именно этому пользователю (IDOR защита)
+        ChatSession session = chatSessionRepository.findByIdAndUser(sessionId, user)
+                .orElseThrow(() -> {
+                    log.warn("Сессия [id={}] не найдена или не принадлежит пользователю '{}' (IDOR защита)",
+                            sessionId, username);
+                    return new ChatSessionNotFoundException(sessionId, username);
+                });
+
+        // 2. Извлечение всех сообщений сессии в прямом хронологическом порядке
+        List<ChatMessage> messages = chatMessageRepository.findBySessionOrderByTimestampAsc(session);
+        log.info("Загружено {} сообщений для сессии [id={}] пользователя '{}'",
+                messages.size(), sessionId, username);
+
+        return messages.stream()
+                .map(ChatMessageResponseDto::fromEntity)
+                .toList();
     }
 
     private User resolveUser(String username) {

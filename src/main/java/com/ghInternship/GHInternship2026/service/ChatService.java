@@ -1,12 +1,17 @@
 package com.ghInternship.GHInternship2026.service;
 
+import com.ghInternship.GHInternship2026.dto.ChatMessageResponseDto;
 import com.ghInternship.GHInternship2026.dto.ChatRequestDto;
 import com.ghInternship.GHInternship2026.dto.ChatResponseDto;
+import com.ghInternship.GHInternship2026.dto.ChatSessionResponseDto;
+
+import java.util.List;
 
 /**
  * Интерфейс сервиса чата.
  * Определяет контракт бизнес-логики обработки пользовательских сообщений,
- * персистентности сессий диалогов и взаимодействия с внешним AI-провайдером.
+ * персистентности сессий диалогов и взаимодействия с внешним AI-провайдером,
+ * а также извлечения истории диалогов и сообщений.
  */
 public interface ChatService {
 
@@ -30,4 +35,21 @@ public interface ChatService {
     default ChatResponseDto processMessage(ChatRequestDto requestDto) {
         return processMessage(requestDto, null);
     }
+
+    /**
+     * Получить список всех сессий диалогов для аутентифицированного пользователя.
+     *
+     * @param username имя авторизованного пользователя
+     * @return список DTO сессий диалогов, отсортированных по наиболее недавней активности
+     */
+    List<ChatSessionResponseDto> getUserChatSessions(String username);
+
+    /**
+     * Получить все сообщения конкретной сессии диалога с обязательной проверкой прав доступа.
+     *
+     * @param sessionId идентификатор сессии диалога
+     * @param username имя авторизованного пользователя
+     * @return список DTO сообщений сессии в хронологическом порядке
+     */
+    List<ChatMessageResponseDto> getSessionMessages(Long sessionId, String username);
 }
