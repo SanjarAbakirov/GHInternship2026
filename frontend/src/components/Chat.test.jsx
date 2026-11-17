@@ -343,4 +343,63 @@ describe('Chat Component — Unit & Integration Tests', () => {
       chatSessionId: 555,
     });
   });
+
+  test('History Sidebar Integration: отображает сайдбар историй и загружает сообщения выбранной сессии при клике', async () => {
+    const user = userEvent.setup();
+
+    const mockSessions = [
+      {
+        id: 701,
+        title: 'Архитектурный вопрос',
+        createdAt: '2026-11-17T10:00:00Z',
+        messageCount: 2,
+        lastMessagePreview: 'Ответ архитектора',
+      },
+    ];
+
+    const mockMessages = [
+      {
+        id: 10,
+        sessionId: 701,
+        senderRole: 'user',
+        content: 'В чем разница между REST и gRPC?',
+        timestamp: '2026-11-17T10:00:00Z',
+      },
+      {
+        id: 11,
+        sessionId: 701,
+        senderRole: 'ai',
+        content: 'REST использует HTTP/JSON, а gRPC — HTTP/2 и Protobuf.',
+        timestamp: '2026-11-17T10:00:05Z',
+      },
+    ];
+
+    const mockFetch = vi.fn().mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/api/chat/sessions/701')) {
+        return Promise.resolve(createMockFetchResponse(mockMessages));
+      }
+      if (typeof url === 'string' && url.includes('/api/chat/sessions')) {
+        return Promise.resolve(createMockFetchResponse(mockSessions));
+      }
+      return Promise.resolve(createMockFetchResponse({ response: 'OK' }));
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    renderWithAuthenticatedProvider(<Chat showHistorySidebar={true} />);
+
+    // 1. Проверяем наличие сайдбара и кликабельной ссылки на сессию
+    expect(screen.getByTestId('chat-history-sidebar')).toBeInTheDocument();
+    const sessionLink = await screen.findByRole('link', { name: /архитектурный вопрос/i });
+    expect(sessionLink).toBeInTheDocument();
+
+    // 2. Кликаем по ссылке сессии для загрузки её сообщений
+    await user.click(sessionLink);
+
+    // 3. Проверяем, что сообщения выбранной сессии отобразились в ленте чата
+    expect(await screen.findByText('В чем разница между REST и gRPC?')).toBeInTheDocument();
+    expect(screen.getByText('REST использует HTTP/JSON, а gRPC — HTTP/2 и Protobuf.')).toBeInTheDocument();
+
+    // 4. Проверяем, что в шапке отобразился номер открытой сессии
+    expect(screen.getByText(/сессия #701/i)).toBeInTheDocument();
+  });
 });

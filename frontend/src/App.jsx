@@ -325,12 +325,12 @@ function AppContent() {
             }
           />
 
-          {/* Защищенный маршрут: AI-чат */}
+          {/* Защищенный маршрут: AI-чат с боковой панелью истории диалогов */}
           <Route
             path="/chat"
             element={
               <ProtectedRoute>
-                <Chat />
+                <Chat showHistorySidebar={true} />
               </ProtectedRoute>
             }
           />

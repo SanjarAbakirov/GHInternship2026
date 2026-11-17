@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { sendChatMessage } from '../services/api';
+import { sendChatMessage, getSessionMessages } from '../services/api';
+import ChatSidebar from './ChatSidebar';
 
 let fallbackCounter = 0;
 
@@ -83,6 +84,7 @@ const ChatMessageItem = memo(function ChatMessageItem({ msg, currentUsername }) 
  * @param {Array<string>} [props.quickPrompts] - Массив быстрых подсказок/вопросов
  * @param {boolean} [props.showQuickPrompts] - Отображать ли блок быстрых подсказок
  * @param {boolean} [props.showClearButton] - Отображать ли кнопку очистки истории
+ * @param {boolean} [props.showHistorySidebar] - Отображать ли боковую панель истории диалогов
  * @param {number} [props.maxMessageLength] - Максимальная длина сообщения
  * @param {string} [props.className] - Дополнительный CSS класс контейнера
  */
@@ -100,6 +102,7 @@ export default function Chat({
   ],
   showQuickPrompts = true,
   showClearButton = true,
+  showHistorySidebar = false,
   maxMessageLength = 2000,
   className = '',
 }) {
@@ -128,6 +131,9 @@ export default function Chat({
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [isLoadingSessionHistory, setIsLoadingSessionHistory] = useState(false);
 
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -201,6 +207,9 @@ export default function Chat({
     const responseDto = await sendChatMessage(messageText, token, currentSessionId);
     if (responseDto?.chatSessionId) {
       console.log(`[Chat] Сохранена активная сессия диалога [id=${responseDto.chatSessionId}]`);
+      if (!currentSessionId) {
+        setHistoryRefreshKey((prev) => prev + 1);
+      }
       setCurrentSessionId(responseDto.chatSessionId);
     }
     return responseDto.response || 'Ответ от AI успешно получен.';
@@ -299,14 +308,68 @@ export default function Chat({
     setErrorMessage(null);
   };
 
+  /**
+   * Выбор сохраненной сессии диалога из боковой панели и загрузка её истории сообщений
+   */
+  const handleSelectSession = async (sessionId) => {
+    if (!sessionId || sessionId === currentSessionId || isSending) return;
+    console.log(`[Chat] Загрузка сообщений сессии [id=${sessionId}]...`);
+    setIsLoadingSessionHistory(true);
+    setErrorMessage(null);
+
+    try {
+      const data = await getSessionMessages(sessionId, token);
+      console.log(`[Chat] Получено ${data?.length || 0} сообщений для сессии [id=${sessionId}]`);
+      if (Array.isArray(data) && data.length > 0) {
+        const mapped = data.map((item) => ({
+          id: `hist-${item.id}`,
+          sender: item.senderRole === 'user' ? 'user' : 'assistant',
+          text: item.content,
+          timestamp: item.timestamp
+            ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : formatTimestamp(),
+        }));
+        setMessages(mapped);
+      } else {
+        setMessages([
+          {
+            id: generateMessageId('welcome'),
+            sender: 'assistant',
+            text: `Сессия #${sessionId} открыта. Задайте вопрос, чтобы продолжить диалог.`,
+            timestamp: formatTimestamp(),
+          },
+        ]);
+      }
+      setCurrentSessionId(sessionId);
+      shouldAutoScrollRef.current = true;
+    } catch (err) {
+      console.error(`[Chat] Ошибка при загрузке сообщений сессии [id=${sessionId}]:`, err);
+      setErrorMessage(err.message || 'Не удалось загрузить историю выбранного диалога');
+    } finally {
+      setIsLoadingSessionHistory(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  };
+
+  /**
+   * Начало нового диалога (сброс текущей сессии и очистка сообщений)
+   */
+  const handleNewChat = () => {
+    console.log('[Chat] Инициализация нового диалога');
+    handleClearChat();
+  };
+
   const effectiveSubtitle = subtitle || (
     currentUser
       ? `Авторизован как: ${currentUser.username}${currentSessionId ? ` • Сессия #${currentSessionId}` : ''} • Защищенный сеанс`
       : 'Безопасное соединение через Spring Boot API'
   );
 
-  return (
-    <div className={`chat-window-container ${className}`} id="chat-component">
+  const chatWindow = (
+    <div
+      className={`chat-window-container ${!showHistorySidebar ? className : ''}`}
+      id={!showHistorySidebar ? 'chat-component' : undefined}
+    >
       {/* 1. Шапка окна чата (Chat Header) */}
       <header className="chat-header-card" aria-label="Шапка чата">
         <div className="chat-header-left">
@@ -327,7 +390,8 @@ export default function Chat({
             <p className="ai-header-sub">
               {currentUser ? (
                 <>
-                  Авторизован как: <strong className="user-highlight">{currentUser.username}</strong> &bull; Защищенный сеанс
+                  Авторизован как: <strong className="user-highlight">{currentUser.username}</strong>
+                  {currentSessionId ? ` • Сессия #${currentSessionId}` : ''} &bull; Защищенный сеанс
                 </>
               ) : (
                 effectiveSubtitle
@@ -336,8 +400,21 @@ export default function Chat({
           </div>
         </div>
 
-        {showClearButton && (
-          <div className="chat-header-actions">
+        <div className="chat-header-actions">
+          {showHistorySidebar && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm btn-toggle-sidebar"
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
+              title={isSidebarOpen ? 'Скрыть историю диалогов' : 'Показать историю диалогов'}
+              aria-label={isSidebarOpen ? 'Скрыть историю диалогов' : 'Показать историю диалогов'}
+              data-testid="toggle-history-sidebar-btn"
+            >
+              💬 {isSidebarOpen ? 'Скрыть историю' : 'История'}
+            </button>
+          )}
+
+          {showClearButton && (
             <button
               type="button"
               className="btn btn-ghost btn-sm"
@@ -347,8 +424,8 @@ export default function Chat({
             >
               Очистить диалог
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
       {/* 2. Блок быстрых подсказок (Quick Prompts) */}
@@ -372,6 +449,13 @@ export default function Chat({
 
       {/* 3. Область динамического отображения сообщений (Display Area for Messages) */}
       <div className="chat-messages-wrapper">
+        {isLoadingSessionHistory && (
+          <div className="session-history-loading-banner" aria-live="polite" data-testid="loading-history-indicator">
+            <span className="sidebar-spinner" aria-hidden="true"></span>
+            <span>Загрузка сообщений сессии...</span>
+          </div>
+        )}
+
         <section
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
@@ -491,4 +575,22 @@ export default function Chat({
       </form>
     </div>
   );
+
+  if (showHistorySidebar) {
+    return (
+      <div className={`chat-layout-wrapper ${className}`} id="chat-component">
+        <ChatSidebar
+          activeSessionId={currentSessionId}
+          onSelectSession={handleSelectSession}
+          onNewChat={handleNewChat}
+          refreshTrigger={historyRefreshKey}
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(false)}
+        />
+        {chatWindow}
+      </div>
+    );
+  }
+
+  return chatWindow;
 }
