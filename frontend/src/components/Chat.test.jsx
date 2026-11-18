@@ -399,7 +399,107 @@ describe('Chat Component — Unit & Integration Tests', () => {
     expect(await screen.findByText('В чем разница между REST и gRPC?')).toBeInTheDocument();
     expect(screen.getByText('REST использует HTTP/JSON, а gRPC — HTTP/2 и Protobuf.')).toBeInTheDocument();
 
-    // 4. Проверяем, что в шапке отобразился номер открытой сессии
+    // 4. Проверяем, что в шапке отобразился номер открытой сессии и статус-бейдж
     expect(screen.getByText(/сессия #701/i)).toBeInTheDocument();
+    expect(screen.getByTestId('badge-ongoing-session')).toBeInTheDocument();
+  });
+
+  test('Conversation Switching: очищает старые сообщения при клике, привязывает sessionId к будущим сообщениям и позволяет сброс в новый чат', async () => {
+    const user = userEvent.setup();
+
+    const mockSessions = [
+      {
+        id: 101,
+        title: 'Первый диалог',
+        messageCount: 1,
+      },
+      {
+        id: 202,
+        title: 'Второй диалог',
+        messageCount: 1,
+      },
+    ];
+
+    const messages101 = [
+      {
+        id: 1,
+        sessionId: 101,
+        senderRole: 'user',
+        content: 'Уникальное сообщение диалога 101',
+        timestamp: '2026-11-18T10:00:00Z',
+      },
+    ];
+
+    const messages202 = [
+      {
+        id: 2,
+        sessionId: 202,
+        senderRole: 'user',
+        content: 'Уникальное сообщение диалога 202',
+        timestamp: '2026-11-18T10:05:00Z',
+      },
+    ];
+
+    const mockFetch = vi.fn().mockImplementation((url) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/chat/sessions/101')) {
+        return Promise.resolve(createMockFetchResponse(messages101));
+      }
+      if (urlStr.includes('/api/chat/sessions/202')) {
+        return Promise.resolve(createMockFetchResponse(messages202));
+      }
+      if (urlStr.includes('/api/chat/sessions')) {
+        return Promise.resolve(createMockFetchResponse(mockSessions));
+      }
+      if (urlStr.includes('/api/chat')) {
+        return Promise.resolve(createMockFetchResponse({ response: 'AI ответ на продолжение', chatSessionId: 202 }));
+      }
+      return Promise.resolve(createMockFetchResponse({ status: 'ok' }));
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    renderWithAuthenticatedProvider(<Chat showHistorySidebar={true} />);
+
+    // 1. Изначально мы в состоянии нового чата
+    expect(screen.getByTestId('badge-new-session')).toBeInTheDocument();
+
+    // 2. Кликаем по первой сессии 101
+    const link101 = await screen.findByRole('link', { name: /первый диалог/i });
+    await user.click(link101);
+
+    expect(await screen.findByText('Уникальное сообщение диалога 101')).toBeInTheDocument();
+    expect(screen.getByTestId('badge-ongoing-session')).toHaveTextContent(/диалог #101/i);
+
+    // 3. Переключаемся на вторую сессию 202
+    const link202 = await screen.findByRole('link', { name: /второй диалог/i });
+    await user.click(link202);
+
+    // 4. Проверяем, что сообщения предыдущего диалога (101) очищены и отображается диалог 202
+    expect(await screen.findByText('Уникальное сообщение диалога 202')).toBeInTheDocument();
+    expect(screen.queryByText('Уникальное сообщение диалога 101')).not.toBeInTheDocument();
+    expect(screen.getByTestId('badge-ongoing-session')).toHaveTextContent(/диалог #202/i);
+
+    // 5. Отправляем сообщение: должно связаться с текущей сессией 202
+    const input = screen.getByRole('textbox', { name: /текстовое поле ввода сообщения для ai/i });
+    await user.type(input, 'Продолжаем тему диалога 202{enter}');
+
+    await waitFor(() => {
+      expect(screen.getByText('AI ответ на продолжение')).toBeInTheDocument();
+    });
+
+    const postCalls = mockFetch.mock.calls.filter(([u]) => String(u).endsWith('/api/chat'));
+    expect(postCalls.length).toBe(1);
+    const postBody = JSON.parse(postCalls[0][1].body);
+    expect(postBody).toEqual({
+      message: 'Продолжаем тему диалога 202',
+      chatSessionId: 202,
+    });
+
+    // 6. Нажимаем кнопку "+ Новый" в бейдже сессии для сброса в новый диалог
+    const newChatBtn = screen.getByTestId('btn-reset-to-new-chat');
+    await user.click(newChatBtn);
+
+    expect(screen.getByTestId('badge-new-session')).toBeInTheDocument();
+    expect(screen.queryByTestId('badge-ongoing-session')).not.toBeInTheDocument();
   });
 });

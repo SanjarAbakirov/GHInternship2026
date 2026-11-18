@@ -314,6 +314,9 @@ export default function Chat({
   const handleSelectSession = async (sessionId) => {
     if (!sessionId || sessionId === currentSessionId || isSending) return;
     console.log(`[Chat] Загрузка сообщений сессии [id=${sessionId}]...`);
+
+    // 1. Немедленно очищаем сообщения предыдущей беседы перед загрузкой (clearing any existing messages)
+    setMessages([]);
     setIsLoadingSessionHistory(true);
     setErrorMessage(null);
 
@@ -340,11 +343,21 @@ export default function Chat({
           },
         ]);
       }
-      setCurrentSessionId(sessionId);
+      // 2. Сохраняем active sessionId в состоянии компонента для привязки последующих сообщений
+      setCurrentSessionId(Number(sessionId));
       shouldAutoScrollRef.current = true;
     } catch (err) {
       console.error(`[Chat] Ошибка при загрузке сообщений сессии [id=${sessionId}]:`, err);
-      setErrorMessage(err.message || 'Не удалось загрузить историю выбранного диалога');
+      const userErr = err.message || 'Не удалось загрузить историю выбранного диалога';
+      setErrorMessage(userErr);
+      setMessages([
+        {
+          id: generateMessageId('err'),
+          sender: 'system',
+          text: `⚠️ Ошибка загрузки диалога #${sessionId}: ${userErr}`,
+          timestamp: formatTimestamp(),
+        },
+      ]);
     } finally {
       setIsLoadingSessionHistory(false);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -386,6 +399,29 @@ export default function Chat({
             <div className="ai-title-row">
               <h2 className="ai-header-title">{title}</h2>
               <span className="ai-model-tag">POST /api/chat</span>
+            </div>
+            <div className="ai-conversation-state-bar">
+              {currentSessionId ? (
+                <div className="session-state-pill ongoing-session-pill" data-testid="badge-ongoing-session">
+                  <span className="state-dot state-dot-active" aria-hidden="true"></span>
+                  <span className="state-label">Диалог #{currentSessionId}</span>
+                  <button
+                    type="button"
+                    className="btn-inline-new-chat"
+                    onClick={handleNewChat}
+                    title="Начать новый диалог"
+                    aria-label="Начать новый диалог"
+                    data-testid="btn-reset-to-new-chat"
+                  >
+                    + Новый
+                  </button>
+                </div>
+              ) : (
+                <div className="session-state-pill new-session-pill" data-testid="badge-new-session">
+                  <span className="state-dot state-dot-new" aria-hidden="true"></span>
+                  <span className="state-label">Новый диалог</span>
+                </div>
+              )}
             </div>
             <p className="ai-header-sub">
               {currentUser ? (

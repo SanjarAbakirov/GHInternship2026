@@ -9,6 +9,7 @@ import Chat from './components/Chat';
 import ProtectedRoute from './components/ProtectedRoute';
 import Notification from './components/Notification';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext';
 import { checkBackendHealth } from './services/api';
 import './App.css';
 
@@ -360,7 +361,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <ChatProvider>
+          <AppContent />
+        </ChatProvider>
       </AuthProvider>
     </BrowserRouter>
   );
