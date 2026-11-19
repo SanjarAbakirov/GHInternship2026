@@ -340,7 +340,33 @@
         - Линтер `oxlint` — 0 warnings, 0 errors.
         - Сборка `vite build` — 100% SUCCESS.
 
+    - [x] **9. Unit and Integration Testing for Chat Persistence (Backend):**
+      - **Repository Slice Tests (@DataJpaTest):**
+        - Тестовые классы [`ChatSessionRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/ChatSessionRepositoryTest.java), [`ChatMessageRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/ChatMessageRepositoryTest.java) и [`UserRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/UserRepositoryTest.java) переведены на `@DataJpaTest` с инъекцией `TestEntityManager`.
+        - Верифицированы кастомные методы `ChatSessionRepository`: `findByUserOrderByCreatedAtDesc`, `findByUserOrderByUpdatedAtDesc`, сложный JPQL-запрос сортировки по активности `findByUserOrderByMostRecentActivityDesc` (`COALESCE(MAX(m.timestamp), cs.updatedAt, cs.createdAt)`), изоляция пользователей `findByIdAndUser`/`existsByIdAndUser`, подсчет `countByUser` и удаление `deleteByIdAndUser`.
+        - Верифицированы кастомные методы `ChatMessageRepository`: прямой `findBySessionOrderByTimestampAsc` и обратный `findBySessionOrderByTimestampDesc` хронологический порядок, поиск последнего сообщения `findFirstBySessionOrderByTimestampDesc`, подсчет `countBySession` и удаление `deleteBySession`.
+        - Разработан демонстрационный класс [`DataJpaTestPersistenceStrategyTest`](src/test/java/com/ghInternship/GHInternship2026/repository/DataJpaTestPersistenceStrategyTest.java), иллюстрирующий стратегию тестирования персистентности, управление транзакционным откатом и целостность связей внешних ключей.
+      - **Service Unit Tests (Mocking the Repository Layer):**
+        - Расширен тестовый класс [`ChatServiceImplTest`](src/test/java/com/ghInternship/GHInternship2026/service/ChatServiceImplTest.java) с использованием Mockito (`@Mock UserRepository`, `@Mock ChatSessionRepository`, `@Mock ChatMessageRepository`):
+        - Использование `ArgumentCaptor` для детальной проверки передаваемых данных при сохранении в БД: проверка `title` сессии, содержимого `content`, роли отправителя (`user` и `ai`), таймстемпов и обновления даты активности сессии при продолжении диалога.
+        - Добавлен тест работы с `SecurityContextHolder` для проверки автоопределения имени пользователя при отсутствии явного параметра.
+        - Проверка вызовов репозитория при выборке сессий и сообщений, а также подтверждение отсутствия лишних вызовов (`verifyNoInteractions`) при ошибках авторизации и IDOR.
+      - **Controller Integration Tests (Securing Chat History Endpoints):**
+        - Расширен интеграционный тестовый класс [`ChatControllerIntegrationTest`](src/test/java/com/ghInternship/GHInternship2026/controller/ChatControllerIntegrationTest.java):
+        - Комплексная проверка эндпоинта `GET /api/chat/sessions`: 401 Unauthorized без токена, 401 при поддельном Bearer-токене, 200 OK со списком сессий авторизованного пользователя и строгая изоляция (пользователь Б не видит сессии пользователя А).
+        - Комплексная проверка `GET /api/chat/sessions/{sessionId}` и альтернативного пути `GET /api/chat/sessions/{sessionId}/messages`: 401 без аутентификации, 200 OK со всеми сообщениями своей сессии в хронологическом порядке, 404 Not Found при попытке доступа к чужой сессии (защита от IDOR) и 404 Not Found для несуществующего `sessionId`.
+        - Проверка CORS preflight (`OPTIONS /api/chat/sessions`) без аутентификации для порта Vite (5173).
+      - **Challenge Consideration (H2 In-Memory vs PostgreSQL / Testcontainers):**
+        - По умолчанию `@DataJpaTest` использует embedded in-memory базу данных H2 (`create-drop`), обеспечивая высокую скорость выполнения и 100% переносимость тестов без необходимости наличия демона Docker.
+        - Для интеграционного тестирования с реальным PostgreSQL подтверждена совместимость драйвера и диалекта, и подготовлена конфигурация `@AutoConfigureTestDatabase(replace = Replace.NONE)` с переопределением DataSource под тестовые контейнеры или локальный инстанс PostgreSQL 16.
+      - Полная верификация:
+        - **217/217** тестов бэкенда (`./mvnw test`) — 100% SUCCESS.
+        - **30/30** тестов фронтенда (`npm test`) — 100% SUCCESS.
+        - Линтер `oxlint` — 0 warnings, 0 errors.
+        - Сборка `vite build` — 100% SUCCESS.
+
 ## Текущее состояние и возможности
+- Реализован всесторонний многоуровневый стек автоматизированного тестирования персистентности (Repository Slice Tests на `@DataJpaTest`, Service Unit Tests с моками Mockito и ArgumentCaptor, Controller Integration Tests с реальной цепочкой Spring Security, JWT и H2/PostgreSQL).
 - Пользователь может свободно переключаться между прошлыми диалогами в боковой панели.
 - При клике на сохраненную беседу старые сообщения мгновенно очищаются, подгружается полная история через `GET /api/chat/sessions/{sessionId}`, а `currentSessionId` фиксируется в стейте.
 - Все новые сообщения пользователя в открытой беседе автоматически привязываются к ней и сохраняются в PostgreSQL 16.
