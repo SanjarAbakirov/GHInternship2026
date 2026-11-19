@@ -3,13 +3,12 @@ package com.ghInternship.GHInternship2026.repository;
 import com.ghInternship.GHInternship2026.entity.ChatMessage;
 import com.ghInternship.GHInternship2026.entity.ChatSession;
 import com.ghInternship.GHInternship2026.entity.User;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,33 +17,32 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Тесты Spring Data JPA репозитория {@link ChatMessageRepository}.
- * Проверяют стандартные CRUD-операции и специализированные запросы
- * для получения сообщений в прямом и обратном хронологическом порядке.
+ * Slice-тесты Spring Data JPA репозитория {@link ChatMessageRepository} на базе {@link DataJpaTest}.
+ * Проверяют сохранение и извлечение сообщений, прямой и обратный хронологический порядок,
+ * получение последнего сообщения и каскадные операции в изолированной JPA-среде.
  */
-@SpringBootTest
-@Transactional
+@DataJpaTest
 class ChatMessageRepositoryTest {
 
     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private ChatSessionRepository chatSessionRepository;
+    private TestEntityManager entityManager;
 
     @Autowired
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
-    private EntityManager entityManager;
+    private ChatSessionRepository chatSessionRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private User testUser;
     private ChatSession testSession;
 
     @BeforeEach
     void setUp() {
-        testUser = userRepository.save(new User("msg_repo_user_" + System.currentTimeMillis(), "hash_secret"));
-        testSession = chatSessionRepository.save(new ChatSession(testUser, "Тестовая сессия"));
+        testUser = entityManager.persistFlushFind(new User("msg_repo_user_" + System.currentTimeMillis(), "hash_secret"));
+        testSession = entityManager.persistFlushFind(new ChatSession(testUser, "Тестовая сессия"));
     }
 
     @Test

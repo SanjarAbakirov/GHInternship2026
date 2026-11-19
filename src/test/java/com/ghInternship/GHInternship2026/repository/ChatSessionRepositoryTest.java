@@ -3,13 +3,12 @@ package com.ghInternship.GHInternship2026.repository;
 import com.ghInternship.GHInternship2026.entity.ChatMessage;
 import com.ghInternship.GHInternship2026.entity.ChatSession;
 import com.ghInternship.GHInternship2026.entity.User;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,33 +17,32 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Тесты Spring Data JPA репозитория {@link ChatSessionRepository}.
- * Проверяют стандартные CRUD-операции и специализированные запросы
- * для упорядочивания сессий по наиболее недавней активности.
+ * Slice-тесты Spring Data JPA репозитория {@link ChatSessionRepository} на базе {@link DataJpaTest}.
+ * Проверяют стандартные CRUD-операции, маппинг сущностей и кастомные запросы
+ * в изолированной среде с использованием {@link TestEntityManager}.
  */
-@SpringBootTest
-@Transactional
+@DataJpaTest
 class ChatSessionRepositoryTest {
 
     @Autowired
-    private UserRepository userRepository;
+    private TestEntityManager entityManager;
 
     @Autowired
     private ChatSessionRepository chatSessionRepository;
 
     @Autowired
-    private ChatMessageRepository chatMessageRepository;
+    private UserRepository userRepository;
 
     @Autowired
-    private EntityManager entityManager;
+    private ChatMessageRepository chatMessageRepository;
 
     private User testUser;
     private User otherUser;
 
     @BeforeEach
     void setUp() {
-        testUser = userRepository.save(new User("session_repo_user_" + System.currentTimeMillis(), "hash_123"));
-        otherUser = userRepository.save(new User("session_other_user_" + System.currentTimeMillis(), "hash_456"));
+        testUser = entityManager.persistFlushFind(new User("session_repo_user_" + System.currentTimeMillis(), "hash_123"));
+        otherUser = entityManager.persistFlushFind(new User("session_other_user_" + System.currentTimeMillis(), "hash_456"));
     }
 
     @Test
@@ -145,6 +143,60 @@ class ChatSessionRepositoryTest {
         assertThat(chatSessionRepository.countByUser(testUser)).isEqualTo(2);
         assertThat(chatSessionRepository.countByUserId(testUser.getId())).isEqualTo(2);
         assertThat(chatSessionRepository.countByUser(otherUser)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("findByUserOrderByUpdatedAtDesc: should order sessions by update time descending")
+    void shouldFindSessionsOrderedByUpdatedAtDesc() {
+        LocalDateTime base = LocalDateTime.now().minusHours(4);
+
+        ChatSession s1 = new ChatSession(null, testUser, "Первая", base, base);
+        ChatSession s2 = new ChatSession(null, testUser, "Вторая", base.plusHours(1), base.plusHours(1));
+        ChatSession s3 = new ChatSession(null, testUser, "Третья", base.plusHours(2), base.plusHours(2));
+
+        chatSessionRepository.saveAll(List.of(s1, s2, s3));
+
+        // Обновляем сессию s1 более поздней датой
+        s1.setUpdatedAt(LocalDateTime.now());
+        chatSessionRepository.save(s1);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        List<ChatSession> result = chatSessionRepository.findByUserOrderByUpdatedAtDesc(testUser);
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).getTitle()).isEqualTo("Первая"); // s1 теперь самая свежая по updatedAt
+    }
+
+    @Test
+    @DisplayName("findByIdWithUser: should eagerly fetch User entity and avoid N+1 / LazyInitializationException")
+    void shouldFetchSessionWithUserEagerly() {
+        ChatSession session = chatSessionRepository.save(new ChatSession(testUser, "Диалог с юзером"));
+        entityManager.flush();
+        entityManager.clear();
+
+        Optional<ChatSession> found = chatSessionRepository.findByIdWithUser(session.getId());
+        assertThat(found).isPresent();
+        assertThat(found.get().getUser()).isNotNull();
+        assertThat(found.get().getUser().getUsername()).isEqualTo(testUser.getUsername());
+    }
+
+    @Test
+    @DisplayName("deleteByIdAndUser: should delete session only if owned by user")
+    void shouldDeleteSessionOnlyIfOwnedByUser() {
+        ChatSession session = chatSessionRepository.save(new ChatSession(testUser, "Удаляемая сессия"));
+        entityManager.flush();
+        entityManager.clear();
+
+        // Попытка удалить чужим пользователем
+        chatSessionRepository.deleteByIdAndUser(session.getId(), otherUser);
+        entityManager.flush();
+        assertThat(chatSessionRepository.findById(session.getId())).isPresent();
+
+        // Успешное удаление владельцем
+        chatSessionRepository.deleteByIdAndUser(session.getId(), testUser);
+        entityManager.flush();
+        assertThat(chatSessionRepository.findById(session.getId())).isEmpty();
     }
 }
 

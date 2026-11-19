@@ -415,4 +415,78 @@ class ChatControllerIntegrationTest {
                 .andExpect(jsonPath("$.error").value("Not Found"))
                 .andExpect(jsonPath("$.message", containsString("historyUserB")));
     }
+
+    @Test
+    @DisplayName("GET /api/chat/sessions/{sessionId}/messages alternative endpoint should also return session messages")
+    void shouldFetchMessagesViaAlternativeMessagesEndpoint() throws Exception {
+        String regUser = """
+                {"username":"altEndpointUser","password":"PasswordAlt123!"}
+                """;
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(regUser))
+                .andExpect(status().isCreated());
+        MvcResult loginRes = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(regUser))
+                .andExpect(status().isOk()).andReturn();
+        String token = JsonPath.read(loginRes.getResponse().getContentAsString(), "$.token");
+
+        when(restTemplate.postForEntity(anyString(), any(), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("{\"choices\":[{\"message\":{\"content\":\"Ответ на альт эндпоинт\"}}]}"));
+
+        MvcResult chatRes = mockMvc.perform(post("/api/chat")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Тест альт эндпоинта\"}"))
+                .andExpect(status().isOk()).andReturn();
+        Number sessionIdNum = JsonPath.read(chatRes.getResponse().getContentAsString(), "$.chatSessionId");
+        Long sessionId = sessionIdNum.longValue();
+
+        // Запрашиваем через /api/chat/sessions/{sessionId}/messages
+        mockMvc.perform(get("/api/chat/sessions/" + sessionId + "/messages")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].content").value("Тест альт эндпоинта"))
+                .andExpect(jsonPath("$[1].content").value("Ответ на альт эндпоинт"));
+    }
+
+    @Test
+    @DisplayName("GET /api/chat/sessions/{nonExistentId} should return 404 Not Found for non-existing session")
+    void shouldReturn404ForNonExistentSessionId() throws Exception {
+        String regUser = """
+                {"username":"nonExistUser","password":"PasswordNon123!"}
+                """;
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content(regUser))
+                .andExpect(status().isCreated());
+        MvcResult loginRes = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(regUser))
+                .andExpect(status().isOk()).andReturn();
+        String token = JsonPath.read(loginRes.getResponse().getContentAsString(), "$.token");
+
+        mockMvc.perform(get("/api/chat/sessions/99999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.path").value("/api/chat/sessions/99999"));
+    }
+
+    @Test
+    @DisplayName("GET /api/chat/sessions with forged JWT should return 401 Unauthorized")
+    void shouldRejectGetSessionsWithForgedJwt() throws Exception {
+        mockMvc.perform(get("/api/chat/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer invalid.forged.token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"));
+    }
+
+    @Test
+    @DisplayName("OPTIONS /api/chat/sessions should allow CORS preflight request without auth")
+    void shouldAllowCorsPreflightForChatSessionsEndpoint() throws Exception {
+        mockMvc.perform(options("/api/chat/sessions")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "Authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
 }

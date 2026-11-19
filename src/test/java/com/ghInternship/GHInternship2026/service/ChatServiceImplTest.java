@@ -201,8 +201,62 @@ class ChatServiceImplTest {
 
         // Сохранение сессии не должно создавать новую, а обновлять существующую
         verify(chatSessionRepository).findByIdAndUser(202L, user);
-        verify(chatSessionRepository).save(existingSession);
-        verify(chatMessageRepository, times(2)).save(any(ChatMessage.class));
+
+        // Проверяем, что save вызван с корректными данными сущности ChatMessage
+        ArgumentCaptor<ChatMessage> msgCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+        verify(chatMessageRepository, times(2)).save(msgCaptor.capture());
+
+        List<ChatMessage> capturedMessages = msgCaptor.getAllValues();
+        // Первое сообщение: от пользователя
+        assertThat(capturedMessages.get(0).getSession()).isEqualTo(existingSession);
+        assertThat(capturedMessages.get(0).getSenderRole()).isEqualTo(ChatMessage.ROLE_USER);
+        assertThat(capturedMessages.get(0).getContent()).isEqualTo("Расскажи про PostgreSQL");
+        assertThat(capturedMessages.get(0).getTimestamp()).isNotNull();
+
+        // Второе сообщение: ответ AI
+        assertThat(capturedMessages.get(1).getSession()).isEqualTo(existingSession);
+        assertThat(capturedMessages.get(1).getSenderRole()).isEqualTo(ChatMessage.ROLE_AI);
+        assertThat(capturedMessages.get(1).getContent()).isEqualTo("PostgreSQL поддерживает транзакции ACID.");
+        assertThat(capturedMessages.get(1).getTimestamp()).isNotNull();
+
+        // Проверяем сохранение сессии для обновления времени последней активности
+        ArgumentCaptor<ChatSession> sessionCaptor = ArgumentCaptor.forClass(ChatSession.class);
+        verify(chatSessionRepository).save(sessionCaptor.capture());
+        assertThat(sessionCaptor.getValue().getId()).isEqualTo(202L);
+        assertThat(sessionCaptor.getValue().getUser()).isEqualTo(user);
+    }
+
+    @Test
+    @DisplayName("Persistence: should resolve user from SecurityContextHolder when username parameter is omitted")
+    @SuppressWarnings("unchecked")
+    void shouldResolveUserFromSecurityContextHolderWhenUsernameNotPassed() {
+        org.springframework.security.core.context.SecurityContext context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("security_user", "n/a", List.of());
+        context.setAuthentication(auth);
+        org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+
+        try {
+            User user = new User("security_user", "hash");
+            when(userRepository.findByUsername("security_user")).thenReturn(Optional.of(user));
+
+            ChatSession session = new ChatSession(303L, user, "Тема контекста безопасности", LocalDateTime.now());
+            when(chatSessionRepository.save(any(ChatSession.class))).thenReturn(session);
+
+            when(restTemplate.postForEntity(eq(TEST_API_URL), any(HttpEntity.class), eq(String.class)))
+                    .thenReturn(ResponseEntity.ok("{\"choices\":[{\"message\":{\"content\":\"Ответ для контекстного пользователя\"}}]}"));
+
+            ChatResponseDto response = chatService.processMessage(new ChatRequestDto("Вопрос от аутентифицированного"));
+
+            assertThat(response.chatSessionId()).isEqualTo(303L);
+            assertThat(response.response()).isEqualTo("Ответ для контекстного пользователя");
+
+            verify(userRepository).findByUsername("security_user");
+            verify(chatSessionRepository, times(2)).save(any(ChatSession.class));
+            verify(chatMessageRepository, times(2)).save(any(ChatMessage.class));
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
