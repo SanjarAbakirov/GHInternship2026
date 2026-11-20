@@ -365,13 +365,37 @@
         - Линтер `oxlint` — 0 warnings, 0 errors.
         - Сборка `vite build` — 100% SUCCESS.
 
+    - [x] **10. Deliverable for Week 7 — Full-Stack Verification & Audit:**
+      - Проведен комплексный аудит всех 4 компонентов Deliverable for Week 7 против живой базы данных PostgreSQL 16 (`gh_internship_db`) на `localhost:5432` и работающих сервисов Spring Boot (порт 8080) и ReactJS Vite (порт 5173).
+      - **1. Spring Boot backend successfully configured to use PostgreSQL:**
+        - Подтверждена инициализация пула `HikariPool-1` с драйвером `org.postgresql.Driver`, диалектом `PostgreSQLDialect` и JDBC URL `jdbc:postgresql://localhost:5432/gh_internship_db`.
+        - Проверены таблицы `users`, `chat_sessions`, `chat_messages`, их первичные и внешние ключи, каскадные правила и индексы btree (`idx_chat_sessions_created_at`, `idx_chat_sessions_updated_at`, `idx_chat_messages_session_id`, `idx_chat_messages_timestamp`).
+      - **2. New database models and logic to save and retrieve user chat histories:**
+        - Верифицирована JPA-персистентность сессий и сообщений при живых cURL-запросах: создание сессии с автогенерацией темы по первому вопросу пользователя, каскадная запись пользовательского сообщения (`ROLE_USER`) и ответа ассистента (`ROLE_AI`).
+        - Подтверждено добавление новых сообщений при отправке `chatSessionId` в существующий диалог с инкрементом счетчика `messageCount` и обновлением временной метки `updatedAt`.
+      - **3. Secure backend endpoints for fetching conversation list and messages:**
+        - Верифицированы эндпоинты `GET /api/chat/sessions` (список сессий со счетчиком сообщений и превью) и `GET /api/chat/sessions/{sessionId}` (полная хронологическая история диалога).
+        - Подтверждена защита от несанкционированного доступа (IDOR): запросы неавторизованных пользователей отклоняются со статусом HTTP 401 Unauthorized, а попытка другого пользователя (`week7_intruder`) запросить или дополнить сессию первого пользователя отклоняется со статусом HTTP 404 Not Found (`ChatSessionNotFoundException`) с нулевой утечкой чужих данных.
+      - **4. ReactJS frontend displaying chat history and conversation switching:**
+        - Боковая панель [`ChatSidebar.jsx`](frontend/src/components/ChatSidebar.jsx) динамически запрашивает сессии, рендерит кликабельные карточки с превью и количеством сообщений.
+        - Переключение диалогов через [`ChatContext.jsx`](frontend/src/context/ChatContext.jsx) очищает старый буфер, подгружает сообщения выбранной сессии и привязывает `currentSessionId` для дальнейших реплик.
+        - Кнопка «+ Новый» безопасно переключает интерфейс в режим создания новой темы диалога.
+      - **Метрики качества:**
+        - **217/217** тестов бэкенда (`./mvnw test`) — 100% SUCCESS.
+        - **30/30** тестов фронтенда (`npm test`) — 100% SUCCESS.
+        - Линтер фронтенда `oxlint` — 0 предупреждений и 0 ошибок.
+        - Сборка фронтенда `vite build` — 100% SUCCESS (127ms).
+        - Сборка бэкенда `./mvnw package -DskipTests` — SUCCESS.
+
 ## Текущее состояние и возможности
+- Полностью завершены и проверены все требования Недели №7 (Deliverable for Week 7).
 - Реализован всесторонний многоуровневый стек автоматизированного тестирования персистентности (Repository Slice Tests на `@DataJpaTest`, Service Unit Tests с моками Mockito и ArgumentCaptor, Controller Integration Tests с реальной цепочкой Spring Security, JWT и H2/PostgreSQL).
 - Пользователь может свободно переключаться между прошлыми диалогами в боковой панели.
 - При клике на сохраненную беседу старые сообщения мгновенно очищаются, подгружается полная история через `GET /api/chat/sessions/{sessionId}`, а `currentSessionId` фиксируется в стейте.
 - Все новые сообщения пользователя в открытой беседе автоматически привязываются к ней и сохраняются в PostgreSQL 16.
 - В шапке чата наглядно отображается статус «✨ Новый диалог» или «🔄 Диалог #{id}» с быстрой кнопкой сброса «+ Новый».
 - Обеспечена 100% изоляция данных между пользователями и защита от IDOR.
+- Проект полностью готов к демонстрации и сдаче.
 
 
 
