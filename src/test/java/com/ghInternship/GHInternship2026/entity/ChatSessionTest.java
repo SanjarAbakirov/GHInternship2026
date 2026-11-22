@@ -114,7 +114,47 @@ class ChatSessionTest {
         session.addMessage(ChatMessage.userMessage(session, "Hello"));
 
         String str = session.toString();
-        assertThat(str).contains("id=10").contains("Session 10").contains("messagesCount=1");
+        assertThat(str)
+                .contains("id=10")
+                .contains("Session 10")
+                .contains("modelName='gpt-3.5-turbo'")
+                .contains("messagesCount=1");
+    }
+
+    @Test
+    @DisplayName("Should initialize with default model name 'gpt-3.5-turbo'")
+    void shouldHaveDefaultModelName() {
+        User user = new User("carol", "hash");
+        ChatSession session = new ChatSession(user);
+
+        assertThat(session.getModelName()).isEqualTo(ChatSession.DEFAULT_MODEL);
+        assertThat(session.getModelName()).isEqualTo("gpt-3.5-turbo");
+    }
+
+    @Test
+    @DisplayName("Should support custom model name via constructor and setter")
+    void shouldSupportCustomModelName() {
+        User user = new User("dave", "hash");
+        ChatSession session = new ChatSession(user, "Диалог по архитектуре", "gpt-4o");
+
+        assertThat(session.getModelName()).isEqualTo("gpt-4o");
+
+        session.setModelName("gemini-1.5-pro");
+        assertThat(session.getModelName()).isEqualTo("gemini-1.5-pro");
+    }
+
+    @Test
+    @DisplayName("Should fallback to DEFAULT_MODEL when blank or null model name is provided")
+    void shouldFallbackToDefaultModelWhenBlank() {
+        User user = new User("eve", "hash");
+        ChatSession session = new ChatSession(user, "Диалог", null);
+        assertThat(session.getModelName()).isEqualTo(ChatSession.DEFAULT_MODEL);
+
+        session.setModelName("   ");
+        assertThat(session.getModelName()).isEqualTo(ChatSession.DEFAULT_MODEL);
+
+        session.setModelName(null);
+        assertThat(session.getModelName()).isEqualTo(ChatSession.DEFAULT_MODEL);
     }
 }
 

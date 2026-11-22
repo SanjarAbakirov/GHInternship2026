@@ -22,7 +22,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * JPA сущность для отдельной сессии диалога (чата) пользователя с AI.
+ * JPA сущность для отдельной сессии диалога (чата / conversation) пользователя с AI.
+ *
+ * <p>Реализует концепцию Conversation Entity (Phase 1, Step 1.1) для долговременного хранения
+ * истории диалогов в базе данных PostgreSQL.
  *
  * <p>Связана отношением многие-к-одному ({@link ManyToOne}) с сущностью {@link User}
  * и один-ко-многим ({@link OneToMany}) с сообщениями {@link ChatMessage}.
@@ -38,6 +41,7 @@ import java.util.Objects;
 public class ChatSession {
 
     public static final String DEFAULT_TITLE = "Новый диалог";
+    public static final String DEFAULT_MODEL = "gpt-3.5-turbo";
     public static final int MAX_TITLE_LENGTH = 255;
 
     @Id
@@ -50,6 +54,12 @@ public class ChatSession {
 
     @Column(nullable = false, length = MAX_TITLE_LENGTH)
     private String title;
+
+    /**
+     * Имя используемой языковой модели AI (например, "gpt-3.5-turbo", "gpt-4o", "gemini-1.5-pro").
+     */
+    @Column(name = "model_name", length = 50)
+    private String modelName = DEFAULT_MODEL;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -86,8 +96,20 @@ public class ChatSession {
      * @param title заголовок темы диалога
      */
     public ChatSession(User user, String title) {
+        this(user, title, DEFAULT_MODEL);
+    }
+
+    /**
+     * Конструктор для создания сессии с указанием заголовка и имени используемой модели.
+     *
+     * @param user владелец сессии диалога
+     * @param title заголовок темы диалога
+     * @param modelName имя используемой языковой модели
+     */
+    public ChatSession(User user, String title, String modelName) {
         this.user = user;
         this.title = (title != null && !title.isBlank()) ? title.trim() : DEFAULT_TITLE;
+        this.modelName = (modelName != null && !modelName.isBlank()) ? modelName.trim() : DEFAULT_MODEL;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = this.createdAt;
     }
@@ -96,16 +118,24 @@ public class ChatSession {
      * Конструктор со всеми базовыми полями.
      */
     public ChatSession(Long id, User user, String title, LocalDateTime createdAt) {
-        this(id, user, title, createdAt, createdAt);
+        this(id, user, title, DEFAULT_MODEL, createdAt, createdAt);
     }
 
     /**
      * Полный конструктор со всеми полями и временем последней активности.
      */
     public ChatSession(Long id, User user, String title, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(id, user, title, DEFAULT_MODEL, createdAt, updatedAt);
+    }
+
+    /**
+     * Полный конструктор с явным указанием имени модели AI.
+     */
+    public ChatSession(Long id, User user, String title, String modelName, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.user = user;
         this.title = (title != null && !title.isBlank()) ? title.trim() : DEFAULT_TITLE;
+        this.modelName = (modelName != null && !modelName.isBlank()) ? modelName.trim() : DEFAULT_MODEL;
         this.createdAt = (createdAt != null) ? createdAt : LocalDateTime.now();
         this.updatedAt = (updatedAt != null) ? updatedAt : this.createdAt;
     }
@@ -120,6 +150,9 @@ public class ChatSession {
         }
         if (this.title == null || this.title.isBlank()) {
             this.title = DEFAULT_TITLE;
+        }
+        if (this.modelName == null || this.modelName.isBlank()) {
+            this.modelName = DEFAULT_MODEL;
         }
     }
 
@@ -199,6 +232,14 @@ public class ChatSession {
         this.title = (title != null && !title.isBlank()) ? title.trim() : DEFAULT_TITLE;
     }
 
+    public String getModelName() {
+        return modelName;
+    }
+
+    public void setModelName(String modelName) {
+        this.modelName = (modelName != null && !modelName.isBlank()) ? modelName.trim() : DEFAULT_MODEL;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -271,6 +312,7 @@ public class ChatSession {
         return "ChatSession{" +
                 "id=" + id +
                 ", title='" + title + '\'' +
+                ", modelName='" + modelName + '\'' +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 ", messagesCount=" + messages.size() +
