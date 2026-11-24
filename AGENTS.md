@@ -405,6 +405,20 @@
          - Модульные тесты: [`UserTest`](src/test/java/com/ghInternship/GHInternship2026/entity/UserTest.java).
        - Полный тестовый прогон: **228/228 тестов бэкенда** (`./mvnw test`) успешно пройдены (100% SUCCESS).
 
+     - [x] **12. Phase 2: Create ConversationRepository:**
+       - Создан интерфейс репозитория [`ConversationRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/ConversationRepository.java), расширяющий `JpaRepository<ChatSession, Long>`.
+       - Добавлен кастомный метод выборки диалогов по ID пользователя с сортировкой по времени обновления (update time, DESC):
+         `List<ChatSession> findByUserIdOrderByUpdatedAtDesc(Long userId)` и `List<ChatSession> findByUserOrderByUpdatedAtDesc(User user)`.
+       - Добавлен кастомный метод валидации прав владения (ownership validation) и предотвращения IDOR:
+         `Optional<ChatSession> findByIdAndUserId(Long id, Long userId)` и `Optional<ChatSession> findByIdAndUser(Long id, User user)`.
+       - Добавлен метод быстрой проверки существования и владения `boolean existsByIdAndUserId(Long id, Long userId)`.
+       - Разработан набор slice-тестов [`ConversationRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/ConversationRepositoryTest.java) на `@DataJpaTest`:
+         - Проверка сортировки `findByUserIdOrderByUpdatedAtDesc` (самые недавние первыми).
+         - Проверка успешной валидации владения `findByIdAndUserId` для владельца.
+         - Проверка отклонения доступа (возврат `Optional.empty()`) при попытке чужого пользователя запросить диалог.
+         - Проверка `existsByIdAndUserId` и базовых операций CRUD.
+       - Все **233 теста бэкенда** (`./mvnw test`) успешно пройдены (100% SUCCESS).
+
 ## Текущее состояние и возможности
 - Полностью завершены и проверены все требования Недели №7 (Deliverable for Week 7).
 - Реализован всесторонний многоуровневый стек автоматизированного тестирования персистентности (Repository Slice Tests на `@DataJpaTest`, Service Unit Tests с моками Mockito и ArgumentCaptor, Controller Integration Tests с реальной цепочкой Spring Security, JWT и H2/PostgreSQL).
