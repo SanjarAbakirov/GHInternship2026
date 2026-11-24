@@ -387,6 +387,24 @@
         - Сборка фронтенда `vite build` — 100% SUCCESS (127ms).
         - Сборка бэкенда `./mvnw package -DskipTests` — SUCCESS.
 
+     - [x] **11. Phase 1: Create JPA Entities (Models) — Step 1.1, Step 1.2, Step 1.3:**
+       - **Step 1.1 (Create Conversation Entity):**
+         - Реализована производственная сущность [`ChatSession`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatSession.java) и семантический фасад [`Conversation`](src/main/java/com/ghInternship/GHInternship2026/entity/Conversation.java).
+         - Поля: автогенерируемый уникальный ID (`id`), заголовок (`title` с автогенерацией темы из первого сообщения), имя языковой модели (`modelName` со значением по умолчанию `"gpt-3.5-turbo"`), временные метки (`createdAt`, `updatedAt`, алиас `getTimestamp()`).
+         - Связь многие-к-одному: `@ManyToOne(fetch = FetchType.LAZY, optional = false)` к сущности [`User`](src/main/java/com/ghInternship/GHInternship2026/entity/User.java).
+         - Двусторонняя связь один-ко-многим: `@OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)` к сущности [`ChatMessage`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatMessage.java) со вспомогательными методами `addMessage` и `removeMessage`.
+         - Модульные тесты: [`ChatSessionTest`](src/test/java/com/ghInternship/GHInternship2026/entity/ChatSessionTest.java) и [`ConversationTest`](src/test/java/com/ghInternship/GHInternship2026/entity/ConversationTest.java).
+       - **Step 1.2 (Create Message Entity):**
+         - Реализована производственная сущность [`ChatMessage`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatMessage.java) и фасад [`Message`](src/main/java/com/ghInternship/GHInternship2026/entity/Message.java).
+         - Поля: уникальный ID (`id`), содержимое сообщения (`content`, `columnDefinition = "TEXT"` для длинных ответов LLM), роль отправителя (`senderRole` и алиас `role`: `"user"` или `"ai"` с нормализацией), временная метка (`timestamp`).
+         - Отношение многие-к-одному к диалогу: `@ManyToOne(fetch = FetchType.LAZY, optional = false)` к [`ChatSession`](src/main/java/com/ghInternship/GHInternship2026/entity/ChatSession.java) с геттерами `getSession()` и алиасом `getConversation()`.
+         - Модульные тесты: [`ChatMessageTest`](src/test/java/com/ghInternship/GHInternship2026/entity/ChatMessageTest.java) и [`MessageTest`](src/test/java/com/ghInternship/GHInternship2026/entity/MessageTest.java).
+       - **Step 1.3 (Update User Entity - Optional):**
+         - В сущности [`User`](src/main/java/com/ghInternship/GHInternship2026/entity/User.java) реализована связь `@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true) private List<ChatSession> chatSessions`.
+         - Добавлены методы управления коллекцией: `getChatSessions()`, `addChatSession()`, `removeChatSession()`, а также спецификационные алиасы `getConversations()`, `setConversations()`, `addConversation()`, `removeConversation()`.
+         - Модульные тесты: [`UserTest`](src/test/java/com/ghInternship/GHInternship2026/entity/UserTest.java).
+       - Полный тестовый прогон: **228/228 тестов бэкенда** (`./mvnw test`) успешно пройдены (100% SUCCESS).
+
 ## Текущее состояние и возможности
 - Полностью завершены и проверены все требования Недели №7 (Deliverable for Week 7).
 - Реализован всесторонний многоуровневый стек автоматизированного тестирования персистентности (Repository Slice Tests на `@DataJpaTest`, Service Unit Tests с моками Mockito и ArgumentCaptor, Controller Integration Tests с реальной цепочкой Spring Security, JWT и H2/PostgreSQL).

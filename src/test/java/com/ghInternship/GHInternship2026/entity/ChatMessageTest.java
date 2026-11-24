@@ -68,6 +68,16 @@ class ChatMessageTest {
 
         message.setSender("ai");
         assertThat(message.getSenderRole()).isEqualTo("ai");
+        assertThat(message.getRole()).isEqualTo("ai");
+
+        message.setRole("user");
+        assertThat(message.getSenderRole()).isEqualTo("user");
+        assertThat(message.getRole()).isEqualTo("user");
+
+        ChatSession session = new ChatSession();
+        message.setConversation(session);
+        assertThat(message.getSession()).isEqualTo(session);
+        assertThat(message.getConversation()).isEqualTo(session);
 
         LocalDateTime now = LocalDateTime.now();
         message.setTimestamp(now);

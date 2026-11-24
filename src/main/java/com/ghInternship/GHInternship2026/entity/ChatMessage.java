@@ -148,6 +148,20 @@ public class ChatMessage {
         this.session = session;
     }
 
+    /**
+     * Алиас для {@link #getSession()} в соответствии со спецификацией Step 1.2 (relationship to Conversation).
+     */
+    public ChatSession getConversation() {
+        return session;
+    }
+
+    /**
+     * Алиас для {@link #setSession(ChatSession)} в соответствии со спецификацией Step 1.2.
+     */
+    public void setConversation(ChatSession conversation) {
+        this.session = conversation;
+    }
+
     public String getContent() {
         return content;
     }
@@ -190,6 +204,20 @@ public class ChatMessage {
      */
     public void setSender(String sender) {
         this.senderRole = normalizeRole(sender);
+    }
+
+    /**
+     * Алиас для {@link #getSenderRole()} в соответствии со спецификацией Step 1.2 (role: user/AI).
+     */
+    public String getRole() {
+        return senderRole;
+    }
+
+    /**
+     * Алиас для {@link #setSenderRole(String)} в соответствии со спецификацией Step 1.2.
+     */
+    public void setRole(String role) {
+        this.senderRole = normalizeRole(role);
     }
 
     public LocalDateTime getTimestamp() {

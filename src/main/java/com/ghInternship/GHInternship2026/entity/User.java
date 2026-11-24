@@ -100,6 +100,24 @@ public class User {
         }
     }
 
+    // --- Алиасы для спецификации Step 1.3 (relationship to Conversation entity) ---
+
+    public List<ChatSession> getConversations() {
+        return chatSessions;
+    }
+
+    public void setConversations(List<ChatSession> conversations) {
+        setChatSessions(conversations);
+    }
+
+    public void addConversation(ChatSession session) {
+        addChatSession(session);
+    }
+
+    public void removeConversation(ChatSession session) {
+        removeChatSession(session);
+    }
+
     // --- equals, hashCode и toString ---
 
     @Override
