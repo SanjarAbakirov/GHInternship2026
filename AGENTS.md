@@ -419,6 +419,21 @@
          - Проверка `existsByIdAndUserId` и базовых операций CRUD.
        - Все **233 теста бэкенда** (`./mvnw test`) успешно пройдены (100% SUCCESS).
 
+     - [x] **13. Phase 2 — Step 2.2: Create MessageRepository:**
+       - Создан интерфейс репозитория [`MessageRepository`](src/main/java/com/ghInternship/GHInternship2026/repository/MessageRepository.java), расширяющий `JpaRepository<ChatMessage, Long>`.
+       - Добавлен кастомный метод выборки сообщений по ID беседы в строгом хронологическом порядке (ASC):
+         `List<ChatMessage> findBySessionIdOrderByTimestampAsc(Long conversationId)` и `List<ChatMessage> findBySessionOrderByTimestampAsc(ChatSession conversation)`.
+       - Добавлен явный JPQL-метод выборки сообщений: `findByConversationId(Long conversationId)`.
+       - Добавлены кастомные методы очистки истории беседы:
+         `void clearConversationHistory(Long conversationId)` и `void deleteBySessionId(Long conversationId)`.
+       - Добавлен метод поиска последнего сообщения для превью ленты: `Optional<ChatMessage> findFirstBySessionIdOrderByTimestampDesc(Long conversationId)`.
+       - Разработан набор slice-тестов [`MessageRepositoryTest`](src/test/java/com/ghInternship/GHInternship2026/repository/MessageRepositoryTest.java) на `@DataJpaTest`:
+         - Проверка сортировки сообщений в хронологическом порядке (старые $\rightarrow$ новые).
+         - Проверка JPQL-запроса `findByConversationId`.
+         - Проверка очистки истории беседы `clearConversationHistory` с гарантией изоляции сообщений других бесед.
+         - Проверка извлечения последнего сообщения для превью.
+       - Все **237 тестов бэкенда** (`./mvnw test`) успешно пройдены (100% SUCCESS).
+
 ## Текущее состояние и возможности
 - Полностью завершены и проверены все требования Недели №7 (Deliverable for Week 7).
 - Реализован всесторонний многоуровневый стек автоматизированного тестирования персистентности (Repository Slice Tests на `@DataJpaTest`, Service Unit Tests с моками Mockito и ArgumentCaptor, Controller Integration Tests с реальной цепочкой Spring Security, JWT и H2/PostgreSQL).
